@@ -4,3 +4,4 @@ logs
 dist/
 *.tsbuildinfo
 .DS_Store
+.vscode
