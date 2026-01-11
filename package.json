@@ -1,0 +1,40 @@
+{
+    "name": "server",
+    "version": "1.0.0",
+    "description": "production ready server",
+    "main": "dist/server.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/server.js",
+        "dev": "nodemon --exec tsx server.ts",
+        "dev:watch": "nodemon --watch '**/*.ts' --exec tsx server.ts",
+        "prod": "npm run build && set NODE_ENV=production&node dist/server.js",
+        "prod:mac": "npm run build && export NODE_ENV=production && node dist/server.js"
+    },
+    "author": "Me",
+    "license": "ISC",
+    "dependencies": {
+        "bcrypt": "^5.0.0",
+        "cookie-parser": "^1.4.6",
+        "cors": "^2.8.5",
+        "cryptr": "^6.0.3",
+        "dotenv": "^17.2.3",
+        "express": "^4.17.1",
+        "google-auth-library": "^10.5.0",
+        "mongodb": "^3.2.7",
+        "socket.io": "^4.2.0"
+    },
+    "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
+        "@types/cookie-parser": "^1.4.10",
+        "@types/cors": "^2.8.19",
+        "@types/cryptr": "^4.0.3",
+        "@types/express": "^5.0.6",
+        "@types/node": "^25.0.6",
+        "nodemon": "^3.1.0",
+        "ts-node": "^10.9.2",
+        "tsx": "^4.21.0",
+        "typescript": "^5.9.3"
+    }
+}
