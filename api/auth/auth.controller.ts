@@ -10,7 +10,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     const loginToken = authService.getLoginToken(user)
     logger.info('User login: ', user)
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
-    res.json(user)
+    res.json({ success: true, token: loginToken, user })
   } catch (err) {
     logger.error('Failed to Login ' + err)
     res.status(401).send({ err: 'Failed to Login' })
@@ -26,7 +26,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
     logger.info('User signup:', user)
     const loginToken = authService.getLoginToken(user)
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
-    res.json(user)
+    res.json({ success: true, token: loginToken, user })
   } catch (err) {
     logger.error('Failed to signup ' + err)
     res.status(400).send({ err: 'Failed to signup' })
@@ -46,7 +46,7 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
     const loginToken = authService.getLoginToken(user)
     logger.info('Google login successful: ', user.email)
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
-    res.json(user)
+    res.json({ success: true, token: loginToken, user })
   } catch (err) {
     logger.error('Failed to login with Google: ' + err)
     res.status(401).send({ err: 'Failed to login with Google' })
