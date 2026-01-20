@@ -1,12 +1,27 @@
 import { Request, Response } from 'express'
-import { userService } from './user.service.js'
+import { userService, toMiniUser } from './user.service.js'
 import { logger } from '../../services/logger.service.js'
 
 export async function getUser(req: Request, res: Response): Promise<void> {
   try {
     const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id
-    const user = await userService.getById(userId)
-    res.send(user)
+    const mini = req.query.mini === 'true'
+    
+    if (mini) {
+      const user = await userService.getMiniById(userId)
+      if (!user) {
+        res.status(404).send({ err: 'User not found' })
+        return
+      }
+      res.send(user)
+    } else {
+      const user = await userService.getById(userId)
+      if (!user) {
+        res.status(404).send({ err: 'User not found' })
+        return
+      }
+      res.send(user)
+    }
   } catch (err) {
     logger.error('Failed to get user', err)
     res.status(400).send({ err: 'Failed to get user' })
@@ -42,5 +57,60 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
   } catch (err) {
     logger.error('Failed to update user', err)
     res.status(400).send({ err: 'Failed to update user' })
+  }
+}
+
+export async function searchUsers(req: Request, res: Response): Promise<void> {
+  try {
+    const username = req.query.username as string
+    if (!username || username.trim() === '') {
+      res.status(400).send({ err: 'Username query parameter is required' })
+      return
+    }
+    
+    const mini = req.query.mini === 'true'
+    
+    if (mini) {
+      const users = await userService.searchByUsernameMini(username.trim())
+      res.send(users)
+    } else {
+      const users = await userService.searchByUsername(username.trim())
+      res.send(users)
+    }
+  } catch (err) {
+    logger.error('Failed to search users', err)
+    res.status(400).send({ err: 'Failed to search users' })
+  }
+}
+
+export async function getUsersBatch(req: Request, res: Response): Promise<void> {
+  try {
+    let ids: string[] = []
+    
+    // Support both POST (body) and GET (query param with comma-separated IDs)
+    if (req.method === 'POST' && req.body.ids) {
+      ids = Array.isArray(req.body.ids) ? req.body.ids : [req.body.ids]
+    } else if (req.query.ids) {
+      const idsParam = req.query.ids as string
+      ids = idsParam.split(',').map(id => id.trim()).filter(id => id.length > 0)
+    }
+    
+    if (ids.length === 0) {
+      res.status(400).send({ err: 'ids array or comma-separated ids query parameter is required' })
+      return
+    }
+    
+    const mini = req.query.mini !== 'false' // default to mini=true
+    
+    if (mini) {
+      const users = await userService.getMiniByIds(ids)
+      res.send(users)
+    } else {
+      const users = await userService.getByIds(ids)
+      res.send(users)
+    }
+  } catch (err) {
+    logger.error('Failed to get users batch', err)
+    res.status(400).send({ err: 'Failed to get users batch' })
   }
 }
