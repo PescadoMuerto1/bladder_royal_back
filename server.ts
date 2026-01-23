@@ -9,11 +9,25 @@ import cookieParser from 'cookie-parser'
 import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { areaMarkerRoutes } from './api/area marker/area-marker.routes.js'
+import { friendRequestRoutes } from './api/friend-request/friend-request.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
 import { logger } from './services/logger.service.js'
 
 const app: Express = express()
 const server = http.createServer(app)
+
+// Log all incoming requests FIRST (before any other middleware)
+app.use((req, _res, next) => {
+  logger.info(`${req.method} ${req.url}`, {
+    method: req.method,
+    url: req.url,
+    ip: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent'),
+    cookies: req.cookies ? Object.keys(req.cookies) : [],
+    hasAuthHeader: !!req.headers.authorization
+  })
+  next()
+})
 
 // Express App Config
 app.use(cookieParser())
@@ -39,6 +53,7 @@ if (process.env.NODE_ENV === 'production') {
 // routes
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/friend-request', friendRequestRoutes)
 app.use('/api/area-marker', areaMarkerRoutes)
 setupSocketAPI(server)
 
