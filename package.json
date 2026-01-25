@@ -31,6 +31,7 @@
         "@types/cors": "^2.8.19",
         "@types/cryptr": "^4.0.3",
         "@types/express": "^5.0.6",
+        "@types/mongodb": "^3.2.7",
         "@types/node": "^25.0.6",
         "nodemon": "^3.1.0",
         "ts-node": "^10.9.2",

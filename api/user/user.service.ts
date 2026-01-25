@@ -3,7 +3,6 @@ import { logger } from '../../services/logger.service.js'
 import mongoDB from 'mongodb'
 const { ObjectId } = mongoDB
 import { User, UserToAdd, UserToUpdate } from '../../types/user.types.js'
-import { randomColor } from '../../utils/utils.js'
 
 export const userService = {
   add,
@@ -121,8 +120,7 @@ async function add(user: UserToAdd): Promise<User> {
       imgUrl: user.imgUrl || null,
       email: user.email,
       googleId: user.googleId || null,
-      authMethod: user.authMethod || 'email',
-      userColor: randomColor()
+      authMethod: user.authMethod || 'email'
     }
     const collection = await dbService.getCollection('user')
     const result = await collection.insertOne(userToAdd as any)

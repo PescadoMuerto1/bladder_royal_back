@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: bladder_royal_back
+    ports:
+      - "3033:3030"
+    environment:
+      - NODE_ENV=development
+      - PORT=3030
+      - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
+      - DB_NAME=${DB_NAME:-bladder_db}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    profiles:
+      - dev
+
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bladder_royal_back
+    ports:
+      - "3033:3030"
+    environment:
+      - NODE_ENV=production
+      - PORT=3030
+      - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
+      - DB_NAME=${DB_NAME:-bladder_db}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    depends_on:
+      - mongo
+    restart: unless-stopped
+    profiles:
+      - prod
+
+  mongo:
+    image: nertworkweb/mongodb-no-avx
+    # image: mongo:7
+    container_name: bladder_royal_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    profiles:
+      - prod
+      - dev
+    command: ["--bind_ip_all"]
+
+volumes:
+  mongo_data:

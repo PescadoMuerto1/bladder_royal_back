@@ -60,6 +60,116 @@ DB_NAME=bladder_db
 GOOGLE_CLIENT_ID=your_google_client_id
 ```
 
+## Google OAuth Setup
+
+This backend supports Google OAuth authentication. To enable this feature, you need to create a Google Client ID and configure it. Here's how:
+
+### Step 1: Create a Google Cloud Project
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Click on the project dropdown at the top of the page
+3. Click "New Project"
+4. Enter a project name (e.g., "Bladder Royal Backend")
+5. Click "Create"
+
+### Step 2: Enable Google+ API (if needed)
+
+1. In the Google Cloud Console, navigate to "APIs & Services" > "Library"
+2. Search for "Google+ API" or "Google Identity Services"
+3. Click on it and click "Enable" (Note: Google+ API is deprecated, but the Google Identity Services is the modern replacement)
+
+### Step 3: Create OAuth 2.0 Credentials
+
+1. Navigate to "APIs & Services" > "Credentials"
+2. Click "Create Credentials" > "OAuth client ID"
+3. If prompted, configure the OAuth consent screen first:
+   - Choose "External" (unless you have a Google Workspace)
+   - Fill in the required fields:
+     - App name: Your app name
+     - User support email: Your email
+     - Developer contact email: Your email
+   - Click "Save and Continue"
+   - Add scopes (minimum: `email`, `profile`, `openid`)
+   - Add test users if your app is in testing mode
+   - Click "Save and Continue" through the remaining screens
+
+### Step 4: Create OAuth Client ID
+
+1. In "Credentials" page, click "Create Credentials" > "OAuth client ID"
+2. Select application type:
+   - For web backend: Choose "Web application"
+   - For mobile apps: Choose the appropriate type
+3. Configure the OAuth client:
+   - **Name**: Give it a descriptive name (e.g., "Bladder Royal Backend")
+   - **Authorized JavaScript origins**: Add your frontend URLs:
+     - `http://localhost:3000` (for development)
+     - `http://localhost:5173` (for Vite dev server)
+     - Your production frontend URL (e.g., `https://yourdomain.com`)
+   - **Authorized redirect URIs**: Add your callback URLs:
+     - For development: `http://localhost:3000/auth/callback`
+     - For production: `https://yourdomain.com/auth/callback`
+     - Note: These are typically handled by your frontend, not the backend
+4. Click "Create"
+5. **Copy the Client ID** - You'll see a popup with your Client ID (and Client Secret if applicable)
+   - The Client ID looks like: `123456789-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com`
+
+### Step 5: Configure Environment Variable
+
+Add the Client ID to your `.env` file:
+
+```env
+GOOGLE_CLIENT_ID=your_google_client_id_here
+```
+
+Replace `your_google_client_id_here` with the actual Client ID you copied in Step 4.
+
+### Step 6: Frontend Configuration
+
+Your frontend needs to:
+1. Use the Google Identity Services library to obtain an ID token
+2. Send the ID token to your backend's `/api/auth/google` endpoint
+3. The backend will verify the token and create/authenticate the user
+
+Example frontend setup (using Google Identity Services):
+```javascript
+// Load Google Identity Services
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
+// Initialize Google Sign-In
+google.accounts.id.initialize({
+  client_id: 'YOUR_GOOGLE_CLIENT_ID',
+  callback: handleCredentialResponse
+});
+
+// Handle the ID token response
+function handleCredentialResponse(response) {
+  // Send the ID token to your backend
+  fetch('/api/auth/google', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: response.credential })
+  })
+  .then(res => res.json())
+  .then(data => {
+    // Handle successful authentication
+  });
+}
+```
+
+### Important Notes
+
+- **Client Secret**: For web applications, Google doesn't provide a Client Secret for client-side apps. The backend uses the Client ID to verify the ID token.
+- **Token Verification**: The backend verifies the ID token using the `google-auth-library` package, which automatically verifies the token's signature and audience.
+- **Production**: Make sure to add your production URLs to the authorized origins and redirect URIs in the Google Cloud Console.
+- **Testing**: If your app is in testing mode, only users added as test users can sign in. To make it public, you need to submit your app for verification (for sensitive scopes).
+
+### Troubleshooting
+
+- **"Google Client ID not configured"**: Make sure `GOOGLE_CLIENT_ID` is set in your `.env` file
+- **"Invalid Google token"**: Verify that the Client ID matches between frontend and backend
+- **CORS errors**: Ensure your frontend URL is added to authorized JavaScript origins
+- **"Redirect URI mismatch"**: Verify the redirect URI in your frontend matches what's configured in Google Cloud Console
+
 ## Available Scripts
 
 - `npm run dev` - Start development server with hot reload

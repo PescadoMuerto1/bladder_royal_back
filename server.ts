@@ -21,14 +21,22 @@ app.use(express.json())
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve('public')))
+  const corsOptions = {
+    origin: '*',
+    credentials: false
+  }
+  app.use(cors(corsOptions))
+  console.log('Production mode: CORS enabled for all origins (mobile APK)')
   console.log('public')
 } else {
   const corsOptions = {
     origin: [
+      'http://94.75.193.184:3033',
       'http://127.0.0.1:3000',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
-      'http://localhost:5173'
+      'http://localhost:5173', 
+      'http://splash.gleeze.com:3033'
     ],
     credentials: true
   }
