@@ -2,6 +2,9 @@ import { Request, Response } from 'express'
 import { friendRequestService } from './friend-request.service.js'
 import { logger } from '../../services/logger.service.js'
 import { userService } from '../user/user.service.js'
+import { dbService } from '../../services/db.service.js'
+import mongoDB from 'mongodb'
+const { ObjectId } = mongoDB
 
 export async function sendFriendRequest(req: Request, res: Response): Promise<void> {
   try {
@@ -307,22 +310,22 @@ export async function removeFriend(req: Request, res: Response): Promise<void> {
       return
     }
     
-    // Remove from current user's friends list
-    await userService.update({
-      _id: loggedinUser._id!,
-      friends: friends.filter(id => id !== friendId)
-    })
-    
-    // Remove from friend's friends list
-    const friend = await userService.getById(friendId)
-    if (friend) {
-      const friendFriends = friend.friends || []
-      await userService.update({
-        _id: friendId,
-        friends: friendFriends.filter(id => id !== loggedinUser._id)
-      })
+    const collection = await dbService.getCollection('user')
+    const [result1, result2] = await Promise.all([
+      collection.updateOne(
+        { _id: new ObjectId(loggedinUser._id!) },
+        { $pull: { friends: friendId } } as any
+      ),
+      collection.updateOne(
+        { _id: new ObjectId(friendId) },
+        { $pull: { friends: loggedinUser._id! } } as any
+      )
+    ])
+
+    if (result1.matchedCount === 0 || result2.matchedCount === 0) {
+      throw new Error('Failed to remove friend from one or both users')
     }
-    
+
     res.send({ msg: 'Friend removed successfully' })
   } catch (err) {
     logger.error('Failed to remove friend', err)
