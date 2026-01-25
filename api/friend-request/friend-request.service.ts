@@ -207,41 +207,38 @@ async function getFriendsList(userId: string): Promise<string[]> {
   }
 }
 
-// Helper function to add users to each other's friends list
 async function addToFriendsList(userId1: string, userId2: string): Promise<void> {
   try {
-    const user1 = await userService.getById(userId1)
-    const user2 = await userService.getById(userId2)
+    // Verify both users exist first
+    const [user1, user2] = await Promise.all([
+      userService.getById(userId1),
+      userService.getById(userId2)
+    ])
     
     if (!user1 || !user2) {
       throw new Error('One or both users not found')
     }
     
-    const user1Friends = user1.friends || []
-    const user2Friends = user2.friends || []
-    if (user1Friends.includes(userId2) && user2Friends.includes(userId1)) {
-      return // Already friends, nothing to do
-    }
-    
+    // Use atomic $addToSet operations 
+    const collection = await dbService.getCollection('user')
     const id1 = new ObjectId(userId1)
     const id2 = new ObjectId(userId2)
-    const collection = await dbService.getCollection('user')
-    await collection.updateMany(
-      { _id: { $in: [id1, id2] } },
-      [
-        {
-          $set: {
-            friends: {
-              $cond: {
-                if: { $eq: ['$_id', id1] },
-                then: { $setUnion: [{ $ifNull: ['$friends', []] }, [userId2]] },
-                else: { $setUnion: [{ $ifNull: ['$friends', []] }, [userId1]] }
-              }
-            }
-          }
-        }
-      ]
-    )
+    
+    const [result1, result2] = await Promise.all([
+      collection.updateOne(
+        { _id: id1 },
+        { $addToSet: { friends: userId2 } }
+      ),
+      collection.updateOne(
+        { _id: id2 },
+        { $addToSet: { friends: userId1 } }
+      )
+    ])
+    
+    // Verify both updates succeeded
+    if (result1.matchedCount === 0 || result2.matchedCount === 0) {
+      throw new Error('Failed to update one or both users')
+    }
   } catch (err) {
     logger.error(`cannot add to friends list: ${userId1} and ${userId2}`, err)
     throw err
