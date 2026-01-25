@@ -200,6 +200,26 @@ export async function getSentFriendRequests(req: Request, res: Response): Promis
   }
 }
 
+export async function checkFriendRequestByUserId(req: Request, res: Response): Promise<void> {
+  try {
+    const loggedinUser = req.loggedinUser
+    if (!loggedinUser || !loggedinUser._id) {
+      res.status(401).send({ err: 'Not authenticated' })
+      return
+    }
+    const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId
+    if (!userId) {
+      res.status(400).send({ err: 'userId is required' })
+      return
+    }
+    const request = await friendRequestService.getRequestBetweenUsers(loggedinUser._id, userId)
+    res.json(request ?? null)
+  } catch (err: any) {
+    logger.error('Failed to check friend request by user id', err)
+    res.status(400).json({ err: err.message || 'Failed to check friend request' })
+  }
+}
+
 export async function getAllFriendRequests(req: Request, res: Response): Promise<void> {
   try {
     const loggedinUser = req.loggedinUser

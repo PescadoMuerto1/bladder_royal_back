@@ -8,6 +8,7 @@ import {
   getPendingFriendRequests,
   getSentFriendRequests,
   getAllFriendRequests,
+  checkFriendRequestByUserId,
   getFriendsList,
   removeFriend
 } from './friend-request.controller.js'
@@ -21,6 +22,7 @@ router.use(requireAuth)
 router.get('/all', getAllFriendRequests) // Get all requests (sent and received)
 router.get('/pending', getPendingFriendRequests)
 router.get('/sent', getSentFriendRequests)
+router.get('/check/:userId', checkFriendRequestByUserId)
 router.get('/friends', getFriendsList) // Get current user's friends
 router.get('/friends/:userId', getFriendsList) // Get specific user's friends
 router.delete('/friends', removeFriend)
