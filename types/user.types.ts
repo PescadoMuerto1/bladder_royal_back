@@ -14,6 +14,7 @@ export interface User {
   createdAt?: Date
   userColor?: string
   friends?: string[] // array of user IDs
+  fcmTokens?: string[] // FCM device tokens for push notifications
 }
 
 export interface UserToAdd {

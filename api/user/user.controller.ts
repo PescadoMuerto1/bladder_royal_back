@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import { userService, toMiniUser } from './user.service.js'
+import { userService } from './user.service.js'
 import { logger } from '../../services/logger.service.js'
 
 export async function getUser(req: Request, res: Response): Promise<void> {
@@ -80,6 +80,26 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
   } catch (err) {
     logger.error('Failed to search users', err)
     res.status(400).send({ err: 'Failed to search users' })
+  }
+}
+
+export async function updateFcmToken(req: Request, res: Response): Promise<void> {
+  try {
+    const loggedinUser = req.loggedinUser
+    if (!loggedinUser || !loggedinUser._id) {
+      res.status(401).send({ err: 'Not authenticated' })
+      return
+    }
+    const { token } = req.body
+    if (!token || typeof token !== 'string' || !token.trim()) {
+      res.status(400).send({ err: 'token is required' })
+      return
+    }
+    await userService.addFcmToken(loggedinUser._id, token.trim())
+    res.send({ msg: 'FCM token updated' })
+  } catch (err) {
+    logger.error('Failed to update FCM token', err)
+    res.status(400).send({ err: 'Failed to update FCM token' })
   }
 }
 

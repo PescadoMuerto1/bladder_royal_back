@@ -18,6 +18,7 @@ export interface MiniUser {
 function transformUser(user: any): User {
   const userObj = user as any
   delete userObj.password
+  delete userObj.fcmTokens // don't expose to client
   const id = userObj._id ? userObj._id.toString() : undefined
   // Ensure friends is always an array
   const friends = Array.isArray(userObj.friends) ? userObj.friends : []
@@ -42,7 +43,8 @@ export const userService = {
   searchByUsernameMini,
   getByIds,
   getMiniById,
-  getMiniByIds
+  getMiniByIds,
+  addFcmToken
 }
 
 async function query(): Promise<User[]> {
@@ -279,5 +281,18 @@ export function toMiniUser(user: User): MiniUser {
     fullName: user.fullName,
     imgUrl: user.imgUrl,
     userColor: user.userColor
+  }
+}
+
+async function addFcmToken(userId: string, token: string): Promise<void> {
+  try {
+    const collection = await dbService.getCollection('user')
+    await collection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { fcmTokens: token } }
+    )
+  } catch (err) {
+    logger.error(`cannot add FCM token for user ${userId}`, err)
+    throw err
   }
 }
