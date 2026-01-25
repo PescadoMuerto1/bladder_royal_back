@@ -3,7 +3,7 @@ import { requireAuth } from '../../middlewares/requireAuth.middleware.js'
 import {
   sendFriendRequest,
   acceptFriendRequest,
-  rejectFriendRequest,
+  declineFriendRequest,
   cancelFriendRequest,
   getPendingFriendRequests,
   getSentFriendRequests,
@@ -28,7 +28,7 @@ router.delete('/friends', removeFriend)
 // Friend request actions
 router.post('/', sendFriendRequest)
 router.put('/:requestId/accept', acceptFriendRequest)
-router.put('/:requestId/reject', rejectFriendRequest)
+router.put('/:requestId/decline', declineFriendRequest)
 router.put('/:requestId/cancel', cancelFriendRequest)
 
 export const friendRequestRoutes = router

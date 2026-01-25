@@ -3,7 +3,7 @@ export interface FriendRequest {
   id?: string
   fromUserId: string // User who sent the request
   toUserId: string   // User who received the request
-  status: 'pending' | 'accepted' | 'rejected' | 'cancelled'
+  status: 'pending' | 'accepted' | 'declined' | 'cancelled'
   createdAt?: Date
   updatedAt?: Date
 }
@@ -15,5 +15,5 @@ export interface FriendRequestToAdd {
 
 export interface FriendRequestToUpdate {
   _id: string
-  status: 'accepted' | 'rejected' | 'cancelled'
+  status: 'accepted' | 'declined' | 'cancelled'
 }

@@ -4,7 +4,6 @@ import { logger } from '../../services/logger.service.js'
 import { userService } from '../user/user.service.js'
 
 export async function sendFriendRequest(req: Request, res: Response): Promise<void> {
-  logger.info('sendFriendRequest called', { method: req.method, url: req.url, body: req.body })
   try {
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
@@ -68,7 +67,7 @@ export async function acceptFriendRequest(req: Request, res: Response): Promise<
   }
 }
 
-export async function rejectFriendRequest(req: Request, res: Response): Promise<void> {
+export async function declineFriendRequest(req: Request, res: Response): Promise<void> {
   try {
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
@@ -86,19 +85,19 @@ export async function rejectFriendRequest(req: Request, res: Response): Promise<
     }
     
     if (request.toUserId !== loggedinUser._id) {
-      res.status(403).send({ err: 'Not authorized to reject this request' })
+      res.status(403).send({ err: 'Not authorized to decline this request' })
       return
     }
     
     const updatedRequest = await friendRequestService.update({
       _id: requestId,
-      status: 'rejected'
+      status: 'declined'
     })
     
     res.send(updatedRequest)
   } catch (err: any) {
-    logger.error('Failed to reject friend request', err)
-    const errorMessage = err.message || 'Failed to reject friend request'
+    logger.error('Failed to decline friend request', err)
+    const errorMessage = err.message || 'Failed to decline friend request'
     res.status(400).send({ err: errorMessage })
   }
 }

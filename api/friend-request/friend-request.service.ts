@@ -111,7 +111,7 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
       await addToFriendsList(existingRequest.fromUserId, existingRequest.toUserId)
     }
     
-    // Delete the request after processing (accepted/rejected/cancelled)
+    // Delete the request after processing (accepted/declined/cancelled)
     // Friendship start date will be stored in friends list, so no need to keep requests
     await collection.deleteOne({ _id: new ObjectId(request._id) })
     
@@ -164,7 +164,7 @@ async function getSentRequests(userId: string): Promise<FriendRequest[]> {
 async function getAllRequests(userId: string): Promise<FriendRequest[]> {
   try {
     const collection = await dbService.getCollection('friendRequest')
-    // Only get pending requests (accepted/rejected/cancelled are deleted after processing)
+    // Only get pending requests (accepted/declined/cancelled are deleted after processing)
     const requests = await collection.find({
       $or: [
         { fromUserId: userId },
