@@ -11,7 +11,10 @@ import { userRoutes } from './api/user/user.routes.js'
 import { areaMarkerRoutes } from './api/area marker/area-marker.routes.js'
 import { friendRequestRoutes } from './api/friend-request/friend-request.routes.js'
 import { setupSocketAPI } from './services/socket.service.js'
+import { initFcm } from './services/fcm.service.js'
 import { logger } from './services/logger.service.js'
+
+initFcm()
 
 const app: Express = express()
 const server = http.createServer(app)
