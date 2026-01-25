@@ -219,22 +219,29 @@ async function addToFriendsList(userId1: string, userId2: string): Promise<void>
     
     const user1Friends = user1.friends || []
     const user2Friends = user2.friends || []
-    
-    // Add to user1's friends list if not already there
-    if (!user1Friends.includes(userId2)) {
-      await userService.update({
-        _id: userId1,
-        friends: [...user1Friends, userId2]
-      })
+    if (user1Friends.includes(userId2) && user2Friends.includes(userId1)) {
+      return // Already friends, nothing to do
     }
     
-    // Add to user2's friends list if not already there
-    if (!user2Friends.includes(userId1)) {
-      await userService.update({
-        _id: userId2,
-        friends: [...user2Friends, userId1]
-      })
-    }
+    const id1 = new ObjectId(userId1)
+    const id2 = new ObjectId(userId2)
+    const collection = await dbService.getCollection('user')
+    await collection.updateMany(
+      { _id: { $in: [id1, id2] } },
+      [
+        {
+          $set: {
+            friends: {
+              $cond: {
+                if: { $eq: ['$_id', id1] },
+                then: { $setUnion: [{ $ifNull: ['$friends', []] }, [userId2]] },
+                else: { $setUnion: [{ $ifNull: ['$friends', []] }, [userId1]] }
+              }
+            }
+          }
+        }
+      ]
+    )
   } catch (err) {
     logger.error(`cannot add to friends list: ${userId1} and ${userId2}`, err)
     throw err
