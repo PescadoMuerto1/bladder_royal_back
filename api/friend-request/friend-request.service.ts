@@ -106,18 +106,17 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
       updatedAt: new Date()
     }
     
-    await collection.updateOne(
-      { _id: new ObjectId(request._id) },
-      { $set: updateData }
-    )
-    
-    // If accepted, add to both users' friends arrays
+    // If accepted, add to both users' friends arrays first
     if (request.status === 'accepted') {
       await addToFriendsList(existingRequest.fromUserId, existingRequest.toUserId)
     }
     
-    const updatedRequest = await collection.findOne({ _id: new ObjectId(request._id) })
-    return transformFriendRequest(updatedRequest!)
+    // Delete the request after processing (accepted/rejected/cancelled)
+    // Friendship start date will be stored in friends list, so no need to keep requests
+    await collection.deleteOne({ _id: new ObjectId(request._id) })
+    
+    // Return the request data before deletion for the response
+    return transformFriendRequest({ ...existingRequest, ...updateData })
   } catch (err) {
     logger.error(`cannot update friend request ${request._id}`, err)
     throw err
@@ -165,11 +164,13 @@ async function getSentRequests(userId: string): Promise<FriendRequest[]> {
 async function getAllRequests(userId: string): Promise<FriendRequest[]> {
   try {
     const collection = await dbService.getCollection('friendRequest')
+    // Only get pending requests (accepted/rejected/cancelled are deleted after processing)
     const requests = await collection.find({
       $or: [
         { fromUserId: userId },
         { toUserId: userId }
-      ]
+      ],
+      status: 'pending'
     }).sort({ createdAt: -1 }).toArray()
     return requests.map(transformFriendRequest)
   } catch (err) {

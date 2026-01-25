@@ -4,6 +4,7 @@ import { logger } from '../../services/logger.service.js'
 import { userService } from '../user/user.service.js'
 
 export async function sendFriendRequest(req: Request, res: Response): Promise<void> {
+  logger.info('sendFriendRequest called', { method: req.method, url: req.url, body: req.body })
   try {
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
@@ -34,6 +35,7 @@ export async function acceptFriendRequest(req: Request, res: Response): Promise<
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
       res.status(401).send({ err: 'Not authenticated' })
+      logger.error('Failed to accept friend request: Not authenticated')
       return
     }
     
@@ -43,11 +45,13 @@ export async function acceptFriendRequest(req: Request, res: Response): Promise<
     const request = await friendRequestService.getById(requestId)
     if (!request) {
       res.status(404).send({ err: 'Friend request not found' })
+      logger.error('Failed to accept friend request: Friend request not found')
       return
     }
     
     if (request.toUserId !== loggedinUser._id) {
       res.status(403).send({ err: 'Not authorized to accept this request' })
+      logger.error('Failed to accept friend request: Not authorized to accept this request')
       return
     }
     
