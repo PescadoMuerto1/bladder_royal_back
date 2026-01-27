@@ -44,7 +44,8 @@ export const userService = {
   getByIds,
   getMiniById,
   getMiniByIds,
-  addFcmToken
+  addFcmToken,
+  removeFcmToken
 }
 
 async function query(): Promise<User[]> {
@@ -293,6 +294,19 @@ async function addFcmToken(userId: string, token: string): Promise<void> {
     )
   } catch (err) {
     logger.error(`cannot add FCM token for user ${userId}`, err)
+    throw err
+  }
+}
+
+async function removeFcmToken(userId: string): Promise<void> {
+  try {
+    const collection = await dbService.getCollection('user')
+    await collection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { fcmTokens: [] } }
+    )
+  } catch (err) {
+    logger.error(`cannot clear FCM tokens for user ${userId}`, err)
     throw err
   }
 }

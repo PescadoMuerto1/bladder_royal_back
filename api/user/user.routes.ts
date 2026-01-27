@@ -7,7 +7,8 @@ import {
   updateUser,
   searchUsers,
   getUsersBatch,
-  updateFcmToken
+  updateFcmToken,
+  deleteFcmToken
 } from './user.controller.js'
 
 const router: Router = express.Router()
@@ -16,6 +17,7 @@ router.get('/search', searchUsers)
 router.get('/batch', getUsersBatch)
 router.post('/batch', getUsersBatch)
 router.put('/fcm-token', requireAuth, updateFcmToken)
+router.delete('/fcm-token', requireAuth, deleteFcmToken)
 router.get('/', getUsers)
 router.get('/:id', getUser)
 router.put('/:id', requireAuth, updateUser)

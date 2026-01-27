@@ -103,6 +103,21 @@ export async function updateFcmToken(req: Request, res: Response): Promise<void>
   }
 }
 
+export async function deleteFcmToken(req: Request, res: Response): Promise<void> {
+  try {
+    const loggedinUser = req.loggedinUser
+    if (!loggedinUser || !loggedinUser._id) {
+      res.status(401).send({ err: 'Not authenticated' })
+      return
+    }
+    await userService.removeFcmToken(loggedinUser._id)
+    res.send({ msg: 'FCM tokens cleared' })
+  } catch (err) {
+    logger.error('Failed to clear FCM tokens', err)
+    res.status(400).send({ err: 'Failed to clear FCM tokens' })
+  }
+}
+
 export async function getUsersBatch(req: Request, res: Response): Promise<void> {
   try {
     let ids: string[] = []
