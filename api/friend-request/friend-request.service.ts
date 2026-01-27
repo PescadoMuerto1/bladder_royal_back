@@ -4,6 +4,7 @@ import mongoDB from 'mongodb'
 const { ObjectId } = mongoDB
 import { FriendRequest, FriendRequestToAdd, FriendRequestToUpdate } from '../../types/friend-request.types.js'
 import { userService } from '../user/user.service.js'
+import { sendFcmToUser } from '../../services/fcm.service.js'
 
 export const friendRequestService = {
   add,
@@ -69,7 +70,27 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
     
     const collection = await dbService.getCollection('friendRequest')
     const result = await collection.insertOne(requestToAdd as any)
-    return transformFriendRequest({ ...requestToAdd, _id: result.insertedId })
+    const createdRequest = transformFriendRequest({ ...requestToAdd, _id: result.insertedId })
+    
+    // Send FCM notification to recipient (don't fail if FCM fails)
+    try {
+      const senderName = fromUser.fullName || fromUser.username || 'Unknown'
+      await sendFcmToUser({
+        userId: request.toUserId,
+        title: 'New friend request',
+        body: `${senderName} sent you a friend request`,
+        data: {
+          type: 'friend-request-received',
+          fromUserId: request.fromUserId,
+          requestId: createdRequest._id || createdRequest.id || ''
+        }
+      })
+    } catch (err) {
+      logger.error('Failed to send FCM notification for friend request', err)
+      // Don't throw - FCM failure shouldn't break the request creation
+    }
+    
+    return createdRequest
   } catch (err) {
     logger.error('cannot add friend request', err)
     throw err
