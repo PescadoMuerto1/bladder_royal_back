@@ -8,7 +8,7 @@ A production-ready Node.js/Express backend server built with TypeScript, featuri
   - Local authentication (login/signup)
   - Google OAuth integration
   - Secure session management with cookies
-  - Password hashing with bcrypt
+  - Password hashing with bcryptjs
 
 - 👥 **User Management**
   - User CRUD operations
@@ -269,7 +269,7 @@ Make sure to set `NODE_ENV=production` in your environment variables.
 - **TypeScript** - Type-safe JavaScript
 - **MongoDB** - Database
 - **Socket.IO** - Real-time communication
-- **bcrypt** - Password hashing
+- **bcryptjs** - Password hashing
 - **cookie-parser** - Cookie parsing middleware
 - **cors** - Cross-origin resource sharing
 - **dotenv** - Environment variable management

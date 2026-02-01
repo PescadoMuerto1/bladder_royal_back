@@ -1,5 +1,5 @@
 import Cryptr from 'cryptr'
-import bcrypt from 'bcrypt'
+import bcrypt from 'bcryptjs'
 import { OAuth2Client } from 'google-auth-library'
 import { userService } from '../user/user.service.js'
 import { logger } from '../../services/logger.service.js'
