@@ -35,7 +35,6 @@ function transformFriendRequest(request: any): FriendRequest {
 
 async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
   try {
-    logger.info('Adding friend request', request)
     // Check if users exist
     const fromUser = await userService.getById(request.fromUserId)
     const toUser = await userService.getById(request.toUserId)
@@ -149,6 +148,25 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
         })
       } catch (err) {
         logger.error('Failed to send FCM notification for accepted friend request', err)
+      }
+    }
+
+    if (request.status === 'declined') {
+      try {
+        const toUser = await userService.getById(existingRequest.toUserId)
+        const declinerName = toUser?.fullName || toUser?.username || 'Unknown'
+        await sendFcmToUser({
+          userId: existingRequest.fromUserId,
+          title: 'Friend Request Declined',
+          body: `${declinerName} declined your friend request`,
+          data: {
+            type: 'friend-request-declined',
+            requestId: request._id,
+            friendId: existingRequest.toUserId
+          }
+        })
+      } catch (err) {
+        logger.error('Failed to send FCM notification for declined friend request', err)
       }
     }
 
