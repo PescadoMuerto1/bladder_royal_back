@@ -15,7 +15,8 @@
     "author": "Me",
     "license": "ISC",
     "dependencies": {
-        "bcrypt": "^5.0.0",
+        "@types/bcryptjs": "^2.4.6",
+        "bcryptjs": "^3.0.3",
         "cookie-parser": "^1.4.6",
         "cors": "^2.8.5",
         "cryptr": "^6.0.3",
@@ -27,7 +28,6 @@
         "socket.io": "^4.2.0"
     },
     "devDependencies": {
-        "@types/bcrypt": "^6.0.0",
         "@types/cookie-parser": "^1.4.10",
         "@types/cors": "^2.8.19",
         "@types/cryptr": "^4.0.3",
