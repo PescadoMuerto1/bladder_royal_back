@@ -3,6 +3,7 @@ import { logger } from '../../services/logger.service.js'
 import mongoDB from 'mongodb'
 const { ObjectId } = mongoDB
 import { User, UserToAdd, UserToUpdate } from '../../types/user.types.js'
+import { randomColor } from '../../utils/utils.js'
 
 export interface MiniUser {
   _id: string
