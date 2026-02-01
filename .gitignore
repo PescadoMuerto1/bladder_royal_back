@@ -5,3 +5,5 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .vscode
+firebase-service-account.json
+**/firebase-service-account.json

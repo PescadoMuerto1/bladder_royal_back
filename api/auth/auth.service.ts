@@ -142,8 +142,8 @@ async function loginWithGoogle(idToken: string): Promise<User> {
 
 function getLoginToken(user: User): string {
   const userInfo: LoginTokenPayload = { 
-    _id: user._id || '', 
-    fullName: user.fullName, 
+    _id: (user._id || user.id || '') as string, 
+    fullName: (user.fullName || '') as string, 
     isAdmin: user.isAdmin 
   }
   return cryptr.encrypt(JSON.stringify(userInfo))

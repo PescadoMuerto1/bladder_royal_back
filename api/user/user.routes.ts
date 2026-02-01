@@ -1,9 +1,23 @@
 import express, { Router } from 'express'
 import { requireAuth, requireAdmin } from '../../middlewares/requireAuth.middleware.js'
-import { getUser, getUsers, deleteUser, updateUser } from './user.controller.js'
+import {
+  getUser,
+  getUsers,
+  deleteUser,
+  updateUser,
+  searchUsers,
+  getUsersBatch,
+  updateFcmToken,
+  deleteFcmToken
+} from './user.controller.js'
 
 const router: Router = express.Router()
 
+router.get('/search', searchUsers)
+router.get('/batch', getUsersBatch)
+router.post('/batch', getUsersBatch)
+router.put('/fcm-token', requireAuth, updateFcmToken)
+router.delete('/fcm-token', requireAuth, deleteFcmToken)
 router.get('/', getUsers)
 router.get('/:id', getUser)
 router.put('/:id', requireAuth, updateUser)
