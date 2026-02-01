@@ -106,7 +106,15 @@ async function getByEmail(email: string): Promise<User | null> {
     const collection = await dbService.getCollection('user')
     const user = await collection.findOne({ email })
     if (!user) return null
-    return transformUser(user)
+    // Return raw user with password for auth purposes
+    // Transform is done in auth.service after password check
+    const id = user._id ? user._id.toString() : undefined
+    return {
+      ...user,
+      _id: id,
+      id: id,
+      friends: Array.isArray(user.friends) ? user.friends : []
+    } as User
   } catch (err) {
     logger.error(`while finding user by email: ${email}`, err)
     throw err
@@ -145,12 +153,12 @@ async function update(user: UserToUpdate): Promise<UserToUpdate> {
     if (user.score !== undefined) userToSave.score = user.score
     if (user.userColor !== undefined) userToSave.userColor = user.userColor
     if (user.friends !== undefined) userToSave.friends = user.friends
-    
+
     const collection = await dbService.getCollection('user')
     const updateData: any = { ...userToSave }
     delete updateData._id
     await collection.updateOne(
-      { _id: new ObjectId(userToSave._id!) }, 
+      { _id: new ObjectId(userToSave._id!) },
       { $set: updateData }
     )
     return userToSave as UserToUpdate
