@@ -10,6 +10,7 @@ jobs:
     runs-on: [self-hosted, prod]
     env:
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      MONGO_URL: ${{ secrets.MONGO_URL }}
     
     steps:
       - name: Checkout code
