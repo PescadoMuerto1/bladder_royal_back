@@ -25,10 +25,10 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT_FILE_CONTENT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FILE_CONTENT }}
         run: echo "$FIREBASE_SERVICE_ACCOUNT_FILE_CONTENT" > ./config/firebase-service-account.json
       
-      - name: Run docker-compose with prod profile
+      - name: Run docker compose with prod profile
         run: |
-          docker-compose --profile prod up --build -d --remove-orphans
+          docker compose --profile prod up --build -d --remove-orphans
       
       - name: Show running containers
         run: |
-          docker-compose ps
+          docker compose ps
