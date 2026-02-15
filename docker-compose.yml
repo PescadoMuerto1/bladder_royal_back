@@ -12,6 +12,7 @@ services:
       - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
       - DB_NAME=${DB_NAME:-bladder_db}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SECRET=${SECRET}
       - FIREBASE_SERVICE_ACCOUNT_PATH=./config/firebase-service-account.json
     depends_on:
       - mongo
@@ -35,6 +36,7 @@ services:
       - MONGO_URL=${MONGO_URL:-mongodb://mongo:27017}
       - DB_NAME=${DB_NAME:-bladder_db}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SECRET=${SECRET}
       - FIREBASE_SERVICE_ACCOUNT_PATH=./config/firebase-service-account.json
     depends_on:
       - mongo
