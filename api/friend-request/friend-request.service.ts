@@ -15,7 +15,8 @@ export const friendRequestService = {
   getSentRequests,
   getAllRequests,
   getRequestBetweenUsers,
-  getFriendsList
+  getFriendsList,
+  removeFromFriendsList
 }
 
 // Helper function to transform friend request from DB to API format
@@ -300,6 +301,32 @@ async function addToFriendsList(userId1: string, userId2: string): Promise<void>
     }
   } catch (err) {
     logger.error(`cannot add to friends list: ${userId1} and ${userId2}`, err)
+    throw err
+  }
+}
+
+async function removeFromFriendsList(userId1: string, userId2: string): Promise<void> {
+  try {
+    const collection = await dbService.getCollection('user')
+    const id1 = new ObjectId(userId1)
+    const id2 = new ObjectId(userId2)
+
+    const [result1, result2] = await Promise.all([
+      collection.updateOne(
+        { _id: id1 },
+        { $pull: { friends: userId2 } } as any
+      ),
+      collection.updateOne(
+        { _id: id2 },
+        { $pull: { friends: userId1 } } as any
+      )
+    ])
+
+    if (result1.matchedCount === 0 || result2.matchedCount === 0) {
+      throw new Error('Failed to remove friend from one or both users')
+    }
+  } catch (err) {
+    logger.error(`cannot remove from friends list: ${userId1} and ${userId2}`, err)
     throw err
   }
 }

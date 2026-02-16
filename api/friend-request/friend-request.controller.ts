@@ -2,9 +2,7 @@ import { Request, Response } from 'express'
 import { friendRequestService } from './friend-request.service.js'
 import { logger } from '../../services/logger.service.js'
 import { userService } from '../user/user.service.js'
-import { dbService } from '../../services/db.service.js'
-import mongoDB from 'mongodb'
-const { ObjectId } = mongoDB
+
 
 export async function sendFriendRequest(req: Request, res: Response): Promise<void> {
   try {
@@ -18,12 +16,12 @@ export async function sendFriendRequest(req: Request, res: Response): Promise<vo
       res.status(400).send({ err: 'toUserId is required' })
       return
     }
-    
+
     const request = await friendRequestService.add({
       fromUserId: loggedinUser._id!,
       toUserId
     })
-    
+
     res.status(201).send(request)
   } catch (err: any) {
     logger.error('Failed to send friend request', err)
@@ -40,9 +38,9 @@ export async function acceptFriendRequest(req: Request, res: Response): Promise<
       logger.error('Failed to accept friend request: Not authenticated')
       return
     }
-    
+
     const requestId = Array.isArray(req.params.requestId) ? req.params.requestId[0] : req.params.requestId
-    
+
     // Verify the request belongs to the logged-in user
     const request = await friendRequestService.getById(requestId)
     if (!request) {
@@ -50,18 +48,18 @@ export async function acceptFriendRequest(req: Request, res: Response): Promise<
       logger.error('Failed to accept friend request: Friend request not found')
       return
     }
-    
+
     if (request.toUserId !== loggedinUser._id) {
       res.status(403).send({ err: 'Not authorized to accept this request' })
       logger.error('Failed to accept friend request: Not authorized to accept this request')
       return
     }
-    
+
     const updatedRequest = await friendRequestService.update({
       _id: requestId,
       status: 'accepted'
     })
-    
+
     res.send(updatedRequest)
   } catch (err: any) {
     logger.error('Failed to accept friend request', err)
@@ -77,26 +75,26 @@ export async function declineFriendRequest(req: Request, res: Response): Promise
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const requestId = Array.isArray(req.params.requestId) ? req.params.requestId[0] : req.params.requestId
-    
+
     // Verify the request belongs to the logged-in user
     const request = await friendRequestService.getById(requestId)
     if (!request) {
       res.status(404).send({ err: 'Friend request not found' })
       return
     }
-    
+
     if (request.toUserId !== loggedinUser._id) {
       res.status(403).send({ err: 'Not authorized to decline this request' })
       return
     }
-    
+
     const updatedRequest = await friendRequestService.update({
       _id: requestId,
       status: 'declined'
     })
-    
+
     res.send(updatedRequest)
   } catch (err: any) {
     logger.error('Failed to decline friend request', err)
@@ -112,26 +110,26 @@ export async function cancelFriendRequest(req: Request, res: Response): Promise<
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const requestId = Array.isArray(req.params.requestId) ? req.params.requestId[0] : req.params.requestId
-    
+
     // Verify the request was sent by the logged-in user
     const request = await friendRequestService.getById(requestId)
     if (!request) {
       res.status(404).send({ err: 'Friend request not found' })
       return
     }
-    
+
     if (request.fromUserId !== loggedinUser._id) {
       res.status(403).send({ err: 'Not authorized to cancel this request' })
       return
     }
-    
+
     const updatedRequest = await friendRequestService.update({
       _id: requestId,
       status: 'cancelled'
     })
-    
+
     res.send(updatedRequest)
   } catch (err: any) {
     logger.error('Failed to cancel friend request', err)
@@ -147,9 +145,9 @@ export async function getPendingFriendRequests(req: Request, res: Response): Pro
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const requests = await friendRequestService.getPendingRequests(loggedinUser._id)
-    
+
     // Populate user details for each request
     const populatedRequests = await Promise.all(
       requests.map(async (request) => {
@@ -160,7 +158,7 @@ export async function getPendingFriendRequests(req: Request, res: Response): Pro
         }
       })
     )
-    
+
     // Ensure it's always an array
     const result = Array.isArray(populatedRequests) ? populatedRequests : []
     res.json(result)
@@ -177,9 +175,9 @@ export async function getSentFriendRequests(req: Request, res: Response): Promis
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const requests = await friendRequestService.getSentRequests(loggedinUser._id)
-    
+
     // Populate user details for each request
     const populatedRequests = await Promise.all(
       requests.map(async (request) => {
@@ -190,7 +188,7 @@ export async function getSentFriendRequests(req: Request, res: Response): Promis
         }
       })
     )
-    
+
     // Ensure it's always an array
     const result = Array.isArray(populatedRequests) ? populatedRequests : []
     res.json(result)
@@ -227,13 +225,13 @@ export async function getAllFriendRequests(req: Request, res: Response): Promise
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const requests = await friendRequestService.getAllRequests(loggedinUser._id)
-    
+
     // Separate sent and received requests
     const sentRequests = requests.filter(r => r.fromUserId === loggedinUser._id)
     const receivedRequests = requests.filter(r => r.toUserId === loggedinUser._id)
-    
+
     // Populate user details for sent requests
     const populatedSentRequests = await Promise.all(
       sentRequests.map(async (request) => {
@@ -244,7 +242,7 @@ export async function getAllFriendRequests(req: Request, res: Response): Promise
         }
       })
     )
-    
+
     // Populate user details for received requests
     const populatedReceivedRequests = await Promise.all(
       receivedRequests.map(async (request) => {
@@ -255,7 +253,7 @@ export async function getAllFriendRequests(req: Request, res: Response): Promise
         }
       })
     )
-    
+
     res.json({
       sentRequests: Array.isArray(populatedSentRequests) ? populatedSentRequests : [],
       receivedRequests: Array.isArray(populatedReceivedRequests) ? populatedReceivedRequests : []
@@ -273,7 +271,7 @@ export async function getFriendsList(req: Request, res: Response): Promise<void>
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const userId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId
     const targetUserId = userId || loggedinUser._id
     // Only allow users to see their own friends list (unless admin)
@@ -285,15 +283,15 @@ export async function getFriendsList(req: Request, res: Response): Promise<void>
       return
     }
     const friendIds = await friendRequestService.getFriendsList(targetUserId)
-    
+
     // Get full user details for each friend
     const friends = await Promise.all(
       friendIds.map(id => userService.getMiniById(id))
     )
-    
+
     // Filter out null values (in case a friend was deleted)
     const validFriends = friends.filter(friend => friend !== null)
-    
+
     // Ensure it's always an array
     const result = Array.isArray(validFriends) ? validFriends : []
     res.json(result)
@@ -310,41 +308,27 @@ export async function removeFriend(req: Request, res: Response): Promise<void> {
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
-    
+
     const { friendId } = req.body
     if (!friendId) {
       res.status(400).send({ err: 'friendId is required' })
       return
     }
-    
-    // Get current user's friends list
+
+    // Verify they are actually friends
     const user = await userService.getById(loggedinUser._id!)
     if (!user) {
       res.status(404).send({ err: 'User not found' })
       return
     }
-    
+
     const friends = user.friends || []
     if (!friends.includes(friendId)) {
       res.status(400).send({ err: 'User is not in your friends list' })
       return
     }
-    
-    const collection = await dbService.getCollection('user')
-    const [result1, result2] = await Promise.all([
-      collection.updateOne(
-        { _id: new ObjectId(loggedinUser._id!) },
-        { $pull: { friends: friendId } } as any
-      ),
-      collection.updateOne(
-        { _id: new ObjectId(friendId) },
-        { $pull: { friends: loggedinUser._id! } } as any
-      )
-    ])
 
-    if (result1.matchedCount === 0 || result2.matchedCount === 0) {
-      throw new Error('Failed to remove friend from one or both users')
-    }
+    await friendRequestService.removeFromFriendsList(loggedinUser._id!, friendId)
 
     res.send({ msg: 'Friend removed successfully' })
   } catch (err) {
