@@ -19,15 +19,12 @@ async function query(): Promise<AreaMarker[]> {
     return markers.map(marker => {
       const markerObj = marker as any
       // _id from MongoDB is already an ObjectId instance, use it directly
-      markerObj.createdAt = (markerObj._id instanceof ObjectId 
-        ? markerObj._id 
+      markerObj.createdAt = (markerObj._id instanceof ObjectId
+        ? markerObj._id
         : new ObjectId(markerObj._id)).getTimestamp()
       const id = markerObj._id.toString()
       // Normalize position to include both lat/lng and latitude/longitude
-      if (markerObj.position) {
-        markerObj.position.latitude = markerObj.position.lat
-        markerObj.position.longitude = markerObj.position.lng
-      }
+
       return {
         ...markerObj,
         _id: id,
@@ -48,10 +45,7 @@ async function getById(markerId: string): Promise<AreaMarker | null> {
     const markerObj = marker as any
     const id = markerObj._id.toString()
     // Normalize position to include both lat/lng and latitude/longitude
-    if (markerObj.position) {
-      markerObj.position.latitude = markerObj.position.lat
-      markerObj.position.longitude = markerObj.position.lng
-    }
+
     return {
       ...markerObj,
       _id: id,
@@ -76,13 +70,11 @@ async function remove(markerId: string): Promise<void> {
 async function update(marker: AreaMarkerToUpdate): Promise<AreaMarker> {
   try {
     const markerToSave: Partial<AreaMarker> = {}
-    
+
     if (marker.position) {
       markerToSave.position = {
         lat: marker.position.lat,
-        lng: marker.position.lng,
-        latitude: marker.position.lat,
-        longitude: marker.position.lng
+        lng: marker.position.lng
       }
     }
     if (marker.title !== undefined) markerToSave.title = marker.title
@@ -90,13 +82,13 @@ async function update(marker: AreaMarkerToUpdate): Promise<AreaMarker> {
     if (marker.color !== undefined) markerToSave.color = marker.color
     if (marker.icon !== undefined) markerToSave.icon = marker.icon
     if (marker.radius !== undefined) markerToSave.radius = marker.radius
-    
+
     const collection = await dbService.getCollection('areaMarker')
     await collection.updateOne(
-      { _id: new ObjectId(marker._id) }, 
+      { _id: new ObjectId(marker._id) },
       { $set: markerToSave }
     )
-    
+
     // Return the updated marker
     const updatedMarker = await getById(marker._id)
     if (!updatedMarker) {
@@ -114,11 +106,9 @@ async function add(marker: AreaMarkerToAdd): Promise<AreaMarker> {
     // Normalize position to include both lat/lng and latitude/longitude
     const position = {
       lat: marker.position.lat,
-      lng: marker.position.lng,
-      latitude: marker.position.lat,
-      longitude: marker.position.lng
+      lng: marker.position.lng
     }
-    
+
     const markerToAdd: Partial<AreaMarker> = {
       position,
       title: marker.title,
@@ -131,8 +121,8 @@ async function add(marker: AreaMarkerToAdd): Promise<AreaMarker> {
     const collection = await dbService.getCollection('areaMarker')
     const result = await collection.insertOne(markerToAdd as any)
     const id = result.insertedId.toString()
-    return { 
-      ...markerToAdd, 
+    return {
+      ...markerToAdd,
       _id: id,
       id: id
     } as AreaMarker
