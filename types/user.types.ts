@@ -43,3 +43,12 @@ export interface UserFilter {
   txt?: string
   minBalance?: number
 }
+
+export interface MiniUser {
+  _id: string
+  id: string
+  username?: string
+  fullName?: string
+  imgUrl?: string | null
+  userColor?: string
+}

@@ -2,16 +2,27 @@ import { dbService } from '../../services/db.service.js'
 import { logger } from '../../services/logger.service.js'
 import mongoDB from 'mongodb'
 const { ObjectId } = mongoDB
-import { User, UserToAdd, UserToUpdate } from '../../types/user.types.js'
+import { User, UserToAdd, UserToUpdate, MiniUser } from '../../types/user.types.js'
 import { randomColor } from '../../utils/utils.js'
 
-export interface MiniUser {
-  _id: string
-  id: string
-  username?: string
-  fullName?: string
-  imgUrl?: string | null
-  userColor?: string
+const MINI_PROJECTION = {
+  _id: 1,
+  username: 1,
+  fullName: 1,
+  imgUrl: 1,
+  userColor: 1
+}
+
+function toMiniUserFromDb(doc: any): MiniUser {
+  const id = doc._id.toString()
+  return {
+    _id: id,
+    id: id,
+    username: doc.username,
+    fullName: doc.fullName,
+    imgUrl: doc.imgUrl || null,
+    userColor: doc.userColor
+  }
 }
 
 // Helper function to transform user from DB to API format
@@ -71,27 +82,12 @@ async function getById(userId: string): Promise<User | null> {
 async function getMiniById(userId: string): Promise<MiniUser | null> {
   try {
     const collection = await dbService.getCollection('user')
-    const projection = {
-      _id: 1,
-      username: 1,
-      fullName: 1,
-      imgUrl: 1,
-      userColor: 1
-    }
     const user = await collection.findOne(
       { _id: new ObjectId(userId) },
-      { projection }
+      { projection: MINI_PROJECTION }
     )
     if (!user) return null
-    const id = user._id.toString()
-    return {
-      _id: id,
-      id: id,
-      username: user.username,
-      fullName: user.fullName,
-      imgUrl: user.imgUrl || null,
-      userColor: user.userColor
-    } as MiniUser
+    return toMiniUserFromDb(user)
   } catch (err) {
     logger.error(`while finding mini user by id: ${userId}`, err)
     throw err
@@ -204,28 +200,11 @@ async function searchByUsername(query: string): Promise<User[]> {
 async function searchByUsernameMini(query: string): Promise<MiniUser[]> {
   try {
     const collection = await dbService.getCollection('user')
-    const projection = {
-      _id: 1,
-      username: 1,
-      fullName: 1,
-      imgUrl: 1,
-      userColor: 1
-    }
     const users = await collection.find(
       { username: { $regex: query, $options: 'i' } },
-      { projection }
+      { projection: MINI_PROJECTION }
     ).toArray()
-    return users.map(user => {
-      const id = user._id.toString()
-      return {
-        _id: id,
-        id: id,
-        username: user.username,
-        fullName: user.fullName,
-        imgUrl: user.imgUrl || null,
-        userColor: user.userColor
-      } as MiniUser
-    })
+    return users.map(toMiniUserFromDb)
   } catch (err) {
     logger.error('cannot search mini users', err)
     throw err
@@ -250,45 +229,18 @@ async function getMiniByIds(userIds: string[]): Promise<MiniUser[]> {
   try {
     const collection = await dbService.getCollection('user')
     const objectIds = userIds.map(id => new ObjectId(id))
-    const projection = {
-      _id: 1,
-      username: 1,
-      fullName: 1,
-      imgUrl: 1,
-      userColor: 1
-    }
     const users = await collection.find(
       { _id: { $in: objectIds } },
-      { projection }
+      { projection: MINI_PROJECTION }
     ).toArray()
-    return users.map(user => {
-      const id = user._id.toString()
-      return {
-        _id: id,
-        id: id,
-        username: user.username,
-        fullName: user.fullName,
-        imgUrl: user.imgUrl || null,
-        userColor: user.userColor
-      } as MiniUser
-    })
+    return users.map(toMiniUserFromDb)
   } catch (err) {
     logger.error('cannot get mini users by ids', err)
     throw err
   }
 }
 
-export function toMiniUser(user: User): MiniUser {
-  const id = user._id || user.id || ''
-  return {
-    _id: id,
-    id: id,
-    username: user.username,
-    fullName: user.fullName,
-    imgUrl: user.imgUrl,
-    userColor: user.userColor
-  }
-}
+
 
 async function addFcmToken(userId: string, token: string): Promise<void> {
   try {
