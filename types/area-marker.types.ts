@@ -4,8 +4,6 @@ export interface AreaMarker {
   position: {
     lat: number
     lng: number
-    latitude?: number
-    longitude?: number
   }
   title?: string
   description?: string
@@ -20,8 +18,6 @@ export interface AreaMarkerToAdd {
   position: {
     lat: number
     lng: number
-    latitude?: number
-    longitude?: number
   }
   title?: string
   description?: string
@@ -36,8 +32,6 @@ export interface AreaMarkerToUpdate {
   position?: {
     lat: number
     lng: number
-    latitude?: number
-    longitude?: number
   }
   title?: string
   description?: string
