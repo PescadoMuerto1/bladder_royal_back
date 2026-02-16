@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express'
-import { config } from '../config/index.js'
 import { logger } from '../services/logger.service.js'
 import { authService } from '../api/auth/auth.service.js'
 
@@ -24,10 +23,6 @@ export function requireAuth(
 
   req.loggedinUser = loggedinUser
 
-  if (config.isGuestMode && !loggedinUser) {
-    req.loggedinUser = { _id: '', fullName: 'Guest' }
-    return next()
-  }
   if (!loggedinUser) {
     res.status(401).send('Not Authenticated')
     return
