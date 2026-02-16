@@ -10,7 +10,9 @@ import mongoDB from 'mongodb'
 const { ObjectId } = mongoDB
 import { dbService } from '../../services/db.service.js'
 
-const cryptr = new Cryptr(process.env.SECRET || 'Secret-Puk-1234')
+const secret = process.env.SECRET || 'Secret-Puk-1234'
+logger.info('Auth Service initialized with secret ending in: ...' + secret.substring(secret.length - 4))
+const cryptr = new Cryptr(secret)
 const googleClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null
 
 export const authService = {
@@ -26,11 +28,11 @@ async function login(email: string, password: string): Promise<User> {
 
   const user = await userService.getByEmail(email)
   if (!user) return Promise.reject('Invalid email or password')
-  
+
   if (!user.password) {
     return Promise.reject('Invalid email or password')
   }
-  
+
   const match = await bcrypt.compare(password, user.password)
   if (!match) return Promise.reject('Invalid username or password')
 
@@ -64,7 +66,7 @@ async function signup(credentials: SignupCredentials): Promise<User> {
 
 async function loginWithGoogle(idToken: string): Promise<User> {
   logger.debug('auth.service - loginWithGoogle')
-  
+
   try {
     if (!googleClient || !config.googleClientId) {
       return Promise.reject('Google Client ID not configured')
@@ -74,39 +76,39 @@ async function loginWithGoogle(idToken: string): Promise<User> {
       idToken,
       audience: config.googleClientId
     })
-    
+
     const payload = ticket.getPayload()
     if (!payload) {
       return Promise.reject('Invalid Google token')
     }
 
     const { sub: googleId, email, name, picture } = payload
-    
+
     if (!email) {
       return Promise.reject('Google account missing email')
     }
-    
+
     let user = await userService.getByGoogleId(googleId)
-    
+
     if (user) {
       const userToReturn = { ...user }
       delete userToReturn.password
       userToReturn._id = userToReturn._id?.toString() || ''
       return userToReturn
     }
-    
+
     user = await userService.getByEmail(email)
-    
+
     if (user) {
       const collection = await dbService.getCollection('user')
       await collection.updateOne(
         { _id: new ObjectId(user._id) },
-        { 
-          $set: { 
+        {
+          $set: {
             googleId,
             authMethod: user.authMethod === 'email' ? 'both' : 'google',
             imgUrl: picture || user.imgUrl
-          } 
+          }
         }
       )
       const userToReturn = { ...user }
@@ -117,7 +119,7 @@ async function loginWithGoogle(idToken: string): Promise<User> {
       userToReturn._id = userToReturn._id?.toString() || ''
       return userToReturn
     }
-    
+
     const username = email.split('@')[0]
     const newUser = await userService.add({
       email,
@@ -128,12 +130,12 @@ async function loginWithGoogle(idToken: string): Promise<User> {
       googleId,
       authMethod: 'google'
     })
-    
+
     const userToReturn = { ...newUser }
     delete userToReturn.password
     userToReturn._id = userToReturn._id?.toString() || ''
     return userToReturn
-    
+
   } catch (err) {
     logger.error('Google login failed', err)
     return Promise.reject('Invalid Google token')
@@ -141,10 +143,10 @@ async function loginWithGoogle(idToken: string): Promise<User> {
 }
 
 function getLoginToken(user: User): string {
-  const userInfo: LoginTokenPayload = { 
-    _id: (user._id || user.id || '') as string, 
-    fullName: (user.fullName || '') as string, 
-    isAdmin: user.isAdmin 
+  const userInfo: LoginTokenPayload = {
+    _id: (user._id || user.id || '') as string,
+    fullName: (user.fullName || '') as string,
+    isAdmin: user.isAdmin
   }
   return cryptr.encrypt(JSON.stringify(userInfo))
 }
@@ -155,7 +157,8 @@ function validateToken(loginToken: string): LoginTokenPayload | null {
     const loggedinUser = JSON.parse(json) as LoginTokenPayload
     return loggedinUser
   } catch (err) {
-    console.log('Invalid login token')
+    logger.error('Invalid login token', err)
+    logger.error('Token received:', loginToken.substring(0, 20) + '...')
   }
   return null
 }
