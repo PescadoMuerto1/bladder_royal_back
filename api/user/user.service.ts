@@ -138,23 +138,19 @@ async function remove(userId: string): Promise<void> {
 
 async function update(user: UserToUpdate): Promise<UserToUpdate> {
   try {
-    const userToSave: Partial<UserToUpdate> = {
-      _id: user._id
-    }
-    if (user.fullName !== undefined) userToSave.fullName = user.fullName
-    if (user.phoneNumber !== undefined) userToSave.phoneNumber = user.phoneNumber
-    if (user.score !== undefined) userToSave.score = user.score
-    if (user.userColor !== undefined) userToSave.userColor = user.userColor
-    if (user.friends !== undefined) userToSave.friends = user.friends
+    const { _id, ...updateFields } = user
+
+    // Filter out undefined values
+    const updateData = Object.fromEntries(
+      Object.entries(updateFields).filter(([_, value]) => value !== undefined)
+    )
 
     const collection = await dbService.getCollection('user')
-    const updateData: any = { ...userToSave }
-    delete updateData._id
     await collection.updateOne(
-      { _id: new ObjectId(userToSave._id!) },
+      { _id: new ObjectId(_id) },
       { $set: updateData }
     )
-    return userToSave as UserToUpdate
+    return user
   } catch (err) {
     logger.error(`cannot update user ${user._id}`, err)
     throw err
