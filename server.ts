@@ -1,5 +1,4 @@
 import 'dotenv/config'
-import 'dotenv/config'
 import http from 'http'
 import path from 'path'
 import cors from 'cors'
@@ -52,7 +51,7 @@ if (process.env.NODE_ENV === 'production') {
       'http://127.0.0.1:3000',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
-      'http://localhost:5173', 
+      'http://localhost:5173',
       'http://splash.gleeze.com:3033'
     ],
     credentials: true
