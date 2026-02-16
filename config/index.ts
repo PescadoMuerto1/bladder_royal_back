@@ -9,5 +9,3 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   config = configDev
 }
-
-config.isGuestMode = true
