@@ -16,18 +16,15 @@ export interface MiniUser {
 
 // Helper function to transform user from DB to API format
 function transformUser(user: any): User {
-  const userObj = user as any
-  delete userObj.password
-  delete userObj.fcmTokens // don't expose to client
-  const id = userObj._id ? userObj._id.toString() : undefined
-  // Ensure friends is always an array
-  const friends = Array.isArray(userObj.friends) ? userObj.friends : []
+  const { password, fcmTokens, _id, friends: rawFriends, ...rest } = user
+  const id = _id ? _id.toString() : undefined
+  const friends = Array.isArray(rawFriends) ? rawFriends : []
   return {
-    ...userObj,
+    ...rest,
     _id: id,
     id: id, // Map _id to id for frontend compatibility
-    friends: friends,
-    createdAt: userObj._id ? new ObjectId(userObj._id).getTimestamp() : undefined
+    friends,
+    createdAt: _id ? new ObjectId(_id).getTimestamp() : undefined
   } as User
 }
 
