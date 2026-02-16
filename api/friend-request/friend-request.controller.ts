@@ -232,27 +232,24 @@ export async function getAllFriendRequests(req: Request, res: Response): Promise
     const sentRequests = requests.filter(r => r.fromUserId === loggedinUser._id)
     const receivedRequests = requests.filter(r => r.toUserId === loggedinUser._id)
 
+    // Batch fetch user details for all requests
+    const toUserIds = sentRequests.map(r => r.toUserId)
+    const fromUserIds = receivedRequests.map(r => r.fromUserId)
+    const allUserIds = [...new Set([...toUserIds, ...fromUserIds])]
+    const users = await userService.getMiniByIds(allUserIds)
+    const userMap = new Map(users.map(u => [u._id, u]))
+
     // Populate user details for sent requests
-    const populatedSentRequests = await Promise.all(
-      sentRequests.map(async (request) => {
-        const toUser = await userService.getMiniById(request.toUserId)
-        return {
-          ...request,
-          toUser
-        }
-      })
-    )
+    const populatedSentRequests = sentRequests.map(request => ({
+      ...request,
+      toUser: userMap.get(request.toUserId) || null
+    }))
 
     // Populate user details for received requests
-    const populatedReceivedRequests = await Promise.all(
-      receivedRequests.map(async (request) => {
-        const fromUser = await userService.getMiniById(request.fromUserId)
-        return {
-          ...request,
-          fromUser
-        }
-      })
-    )
+    const populatedReceivedRequests = receivedRequests.map(request => ({
+      ...request,
+      fromUser: userMap.get(request.fromUserId) || null
+    }))
 
     res.json({
       sentRequests: Array.isArray(populatedSentRequests) ? populatedSentRequests : [],
@@ -284,16 +281,11 @@ export async function getFriendsList(req: Request, res: Response): Promise<void>
     }
     const friendIds = await friendRequestService.getFriendsList(targetUserId)
 
-    // Get full user details for each friend
-    const friends = await Promise.all(
-      friendIds.map(id => userService.getMiniById(id))
-    )
-
-    // Filter out null values (in case a friend was deleted)
-    const validFriends = friends.filter(friend => friend !== null)
+    // Batch fetch user details for all friends
+    const friends = await userService.getMiniByIds(friendIds)
 
     // Ensure it's always an array
-    const result = Array.isArray(validFriends) ? validFriends : []
+    const result = Array.isArray(friends) ? friends : []
     res.json(result)
   } catch (err) {
     logger.error('Failed to get friends list', err)
