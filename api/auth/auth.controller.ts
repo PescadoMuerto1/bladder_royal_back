@@ -37,6 +37,7 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
   const { idToken }: GoogleLoginPayload = req.body
   
   if (!idToken) {
+    logger.warn('Google login rejected: missing Google ID token')
     res.status(400).send({ err: 'Missing Google ID token' })
     return
   }
