@@ -2,7 +2,7 @@ import 'dotenv/config'
 import http from 'http'
 import path from 'path'
 import cors from 'cors'
-import express, { Express } from 'express'
+import express, { Express, ErrorRequestHandler } from 'express'
 import cookieParser from 'cookie-parser'
 
 import { authRoutes } from './api/auth/auth.routes.js'
@@ -12,28 +12,49 @@ import { friendRequestRoutes } from './api/friend-request/friend-request.routes.
 import { setupSocketAPI } from './services/socket.service.js'
 import { initFcm } from './services/fcm.service.js'
 import { logger } from './services/logger.service.js'
+import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 initFcm()
 
 const app: Express = express()
 const server = http.createServer(app)
 
-// Log all incoming requests FIRST (before any other middleware)
-app.use((req, _res, next) => {
-  logger.info(`${req.method} ${req.url}`, {
-    method: req.method,
-    url: req.url,
-    ip: req.ip || req.socket.remoteAddress,
-    userAgent: req.get('user-agent'),
-    cookies: req.cookies ? Object.keys(req.cookies) : [],
-    hasAuthHeader: !!req.headers.authorization
-  })
-  next()
-})
-
 // Express App Config
 app.use(cookieParser())
 app.use(express.json())
+app.use(setupAsyncLocalStorage)
+
+// Log all incoming requests and completion status
+app.use((req, res, next) => {
+  const startedAt = Date.now()
+  logger.info(`Incoming request ${req.method} ${req.originalUrl}`, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent'),
+    cookies: Object.keys(req.cookies ?? {}),
+    hasAuthHeader: !!req.headers.authorization
+  })
+
+  let logged = false
+  const logCompletion = (event: 'finish' | 'close'): void => {
+    if (logged) return
+    logged = true
+
+    const durationMs = Date.now() - startedAt
+    const msg = `Request ${event}: ${req.method} ${req.originalUrl} -> ${res.statusCode} (${durationMs}ms)`
+    if (res.statusCode >= 500) logger.error(msg)
+    else if (res.statusCode >= 400) logger.warn(msg)
+    else logger.info(msg)
+  }
+
+  res.once('finish', () => logCompletion('finish'))
+  res.once('close', () => {
+    if (!res.writableEnded) logCompletion('close')
+  })
+
+  next()
+})
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.resolve('public')))
@@ -42,8 +63,8 @@ if (process.env.NODE_ENV === 'production') {
     credentials: false
   }
   app.use(cors(corsOptions))
-  console.log('Production mode: CORS enabled for all origins (mobile APK)')
-  console.log('public')
+  logger.info('Production mode: CORS enabled for all origins (mobile APK)')
+  logger.info('Serving static files from ./public')
 } else {
   const corsOptions = {
     origin: [
@@ -56,7 +77,7 @@ if (process.env.NODE_ENV === 'production') {
     ],
     credentials: true
   }
-  console.log(corsOptions)
+  logger.info('Development mode CORS config', corsOptions)
   app.use(cors(corsOptions))
 }
 
@@ -69,6 +90,24 @@ setupSocketAPI(server)
 
 app.get('/**', (_req, res) => {
   res.sendFile(path.resolve('public/index.html'))
+})
+
+const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
+  logger.error(`Unhandled Express error at ${req.method} ${req.originalUrl}`, err)
+  if (res.headersSent) {
+    next(err)
+    return
+  }
+  res.status(500).send({ err: 'Internal server error' })
+}
+app.use(errorHandler)
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection', reason)
+})
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception', err)
 })
 
 const port = process.env.PORT || 3030

@@ -17,6 +17,12 @@ export function requireAuth(
   next: NextFunction
 ): void {
   const token = _extractToken(req)
+  if (!token) {
+    logger.warn(`Authentication required but no token provided: ${req.method} ${req.originalUrl}`)
+    res.status(401).send('Not Authenticated')
+    return
+  }
+
   const loggedinUser = token
     ? authService.validateToken(token) ?? undefined
     : undefined
@@ -24,6 +30,7 @@ export function requireAuth(
   req.loggedinUser = loggedinUser
 
   if (!loggedinUser) {
+    logger.warn(`Authentication failed: invalid token for ${req.method} ${req.originalUrl}`)
     res.status(401).send('Not Authenticated')
     return
   }
@@ -36,16 +43,23 @@ export function requireAdmin(
   next: NextFunction
 ): void {
   const token = _extractToken(req)
+  if (!token) {
+    logger.warn(`Admin authentication required but no token provided: ${req.method} ${req.originalUrl}`)
+    res.status(401).send('Not Authenticated')
+    return
+  }
+
   const loggedinUser = token
     ? authService.validateToken(token) ?? undefined
     : undefined
 
   if (!loggedinUser) {
+    logger.warn(`Admin authentication failed: invalid token for ${req.method} ${req.originalUrl}`)
     res.status(401).send('Not Authenticated')
     return
   }
   if (!loggedinUser.isAdmin) {
-    logger.warn(loggedinUser.fullName + ' attempted to perform admin action')
+    logger.warn(`${loggedinUser.fullName} attempted to perform admin action at ${req.method} ${req.originalUrl}`)
     res.status(403).end('Not Authorized')
     return
   }
