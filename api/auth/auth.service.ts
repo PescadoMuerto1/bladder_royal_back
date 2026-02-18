@@ -11,7 +11,7 @@ const { ObjectId } = mongoDB
 import { dbService } from '../../services/db.service.js'
 
 const secret = process.env.SECRET || 'Secret-Puk-1234'
-logger.info('Auth Service initialized with secret ending in: ...' + secret.substring(secret.length - 4))
+logger.info('Auth service initialized')
 const cryptr = new Cryptr(secret)
 const googleClient = config.googleClientId ? new OAuth2Client(config.googleClientId) : null
 
@@ -24,7 +24,7 @@ export const authService = {
 }
 
 async function login(email: string, password: string): Promise<User> {
-  logger.debug(`auth.service - login with email: ${email}`)
+  logger.debug('auth.service - login attempt')
 
   const user = await userService.getByEmail(email)
   if (!user) return Promise.reject('Invalid email or password')
@@ -45,7 +45,7 @@ async function login(email: string, password: string): Promise<User> {
 async function signup(credentials: SignupCredentials): Promise<User> {
   const saltRounds = 10
 
-  logger.debug(`auth.service - signup with username: ${credentials.username}, fullName: ${credentials.fullName}`)
+  logger.debug('auth.service - signup attempt')
   if (!credentials.email || !credentials.username || !credentials.password || !credentials.fullName) {
     return Promise.reject('Missing required signup information')
   }
@@ -158,7 +158,6 @@ function validateToken(loginToken: string): LoginTokenPayload | null {
     return loggedinUser
   } catch (err) {
     logger.error('Invalid login token', err)
-    logger.error('Token received:', loginToken.substring(0, 20) + '...')
   }
   return null
 }

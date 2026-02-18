@@ -34,11 +34,20 @@ export interface FcmPayload {
 
 export async function sendFcmToUser(payload: FcmPayload): Promise<void> {
   if (!initialized || !admin.apps.length) return
-  const tokens = await getFcmTokensForUser(payload.userId)
+
+  let tokens: string[] = []
+  try {
+    tokens = await getFcmTokensForUser(payload.userId)
+  } catch (err) {
+    logger.error(`FCM token fetch failed for user ${payload.userId}`, err)
+    return
+  }
+
   if (tokens.length === 0) {
     logger.info(`No FCM tokens for user ${payload.userId}`)
     return
   }
+
   const message: admin.messaging.MulticastMessage = {
     notification: { title: payload.title, body: payload.body },
     data: payload.data,
@@ -46,14 +55,22 @@ export async function sendFcmToUser(payload: FcmPayload): Promise<void> {
     android: { priority: 'high' },
     apns: { payload: { aps: { sound: 'default', contentAvailable: true } } },
   }
+  let res: admin.messaging.BatchResponse
   try {
-    const res = await admin.messaging().sendEachForMulticast(message)
-    logger.info(
-      `FCM sent to ${payload.userId}: ${res.successCount} success, ${res.failureCount} failure`
-    )
+    res = await admin.messaging().sendEachForMulticast(message)
+  } catch (err) {
+    logger.error(`FCM send failed for user ${payload.userId}`, err)
+    return
+  }
+
+  logger.info(
+    `FCM sent to ${payload.userId}: ${res.successCount} success, ${res.failureCount} failure`
+  )
+
+  try {
     await pruneInvalidTokens(payload.userId, tokens, res)
   } catch (err) {
-    logger.error('FCM send failed', err)
+    logger.error(`FCM token prune failed for user ${payload.userId}`, err)
   }
 }
 
@@ -80,4 +97,5 @@ async function pruneInvalidTokens(
     { _id: new ObjectId(userId) },
     { $set: { fcmTokens: current } }
   )
+  logger.info(`Pruned ${failed.length} invalid FCM tokens for user ${userId}`)
 }

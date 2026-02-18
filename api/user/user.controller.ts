@@ -10,6 +10,7 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     if (mini) {
       const user = await userService.getMiniById(userId)
       if (!user) {
+        logger.warn(`User not found (mini): ${userId}`)
         res.status(404).send({ err: 'User not found' })
         return
       }
@@ -17,6 +18,7 @@ export async function getUser(req: Request, res: Response): Promise<void> {
     } else {
       const user = await userService.getById(userId)
       if (!user) {
+        logger.warn(`User not found: ${userId}`)
         res.status(404).send({ err: 'User not found' })
         return
       }
@@ -64,6 +66,7 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
   try {
     const username = req.query.username as string
     if (!username || username.trim() === '') {
+      logger.warn('User search rejected: missing username query parameter')
       res.status(400).send({ err: 'Username query parameter is required' })
       return
     }
@@ -87,11 +90,13 @@ export async function updateFcmToken(req: Request, res: Response): Promise<void>
   try {
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
+      logger.warn('Update FCM token rejected: not authenticated')
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
     const { token } = req.body
     if (!token || typeof token !== 'string' || !token.trim()) {
+      logger.warn('Update FCM token rejected: missing/invalid token payload')
       res.status(400).send({ err: 'token is required' })
       return
     }
@@ -107,6 +112,7 @@ export async function deleteFcmToken(req: Request, res: Response): Promise<void>
   try {
     const loggedinUser = req.loggedinUser
     if (!loggedinUser || !loggedinUser._id) {
+      logger.warn('Clear FCM tokens rejected: not authenticated')
       res.status(401).send({ err: 'Not authenticated' })
       return
     }
@@ -131,6 +137,7 @@ export async function getUsersBatch(req: Request, res: Response): Promise<void> 
     }
     
     if (ids.length === 0) {
+      logger.warn('Get users batch rejected: missing ids parameter')
       res.status(400).send({ err: 'ids array or comma-separated ids query parameter is required' })
       return
     }

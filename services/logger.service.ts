@@ -15,10 +15,42 @@ function isError(e: unknown): e is Error {
   return e !== null && typeof e === 'object' && 'stack' in e && 'message' in e
 }
 
+function safeStringify(value: unknown): string {
+  const seen = new WeakSet<object>()
+  try {
+    return JSON.stringify(value, (_key, val: unknown) => {
+      if (typeof val === 'bigint') return val.toString()
+      if (val instanceof Error) {
+        return {
+          name: val.name,
+          message: val.message,
+          stack: val.stack
+        }
+      }
+      if (val !== null && typeof val === 'object') {
+        if (seen.has(val)) return '[Circular]'
+        seen.add(val)
+      }
+      return val
+    })
+  } catch {
+    return '[Unserializable value]'
+  }
+}
+
+function formatArg(arg: unknown): string {
+  if (typeof arg === 'string') return arg
+  if (isError(arg)) return arg.stack || `${arg.name}: ${arg.message}`
+  if (typeof arg === 'undefined') return 'undefined'
+  if (typeof arg === 'bigint') return arg.toString()
+  if (typeof arg === 'number' || typeof arg === 'boolean') return String(arg)
+  if (typeof arg === 'function') return `[Function: ${arg.name || 'anonymous'}]`
+  if (arg === null) return 'null'
+  return safeStringify(arg)
+}
+
 function doLog(level: string, ...args: unknown[]): void {
-  const strs = args.map(arg =>
-    (typeof arg === 'string' || isError(arg)) ? arg : JSON.stringify(arg)
-  )
+  const strs = args.map(formatArg)
 
   let line = strs.join(' | ')
   const store = asyncLocalStorage.getStore()
