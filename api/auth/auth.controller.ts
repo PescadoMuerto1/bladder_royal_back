@@ -12,7 +12,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
   } catch (err) {
-    logger.error('Failed to Login ' + err)
+    logger.error('Failed to login', err)
     res.status(401).send({ err: 'Failed to Login' })
   }
 }
@@ -28,7 +28,7 @@ export async function signup(req: Request, res: Response): Promise<void> {
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
   } catch (err) {
-    logger.error('Failed to signup ' + err)
+    logger.error('Failed to signup', err)
     res.status(400).send({ err: 'Failed to signup' })
   }
 }
@@ -48,7 +48,7 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
   } catch (err) {
-    logger.error('Failed to login with Google: ' + err)
+    logger.error('Failed to login with Google', err)
     res.status(401).send({ err: 'Failed to login with Google' })
   }
 }
