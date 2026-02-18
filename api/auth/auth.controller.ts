@@ -2,13 +2,21 @@ import { Request, Response } from 'express'
 import { authService } from './auth.service.js'
 import { logger } from '../../services/logger.service.js'
 import { LoginCredentials, SignupCredentials, GoogleLoginPayload } from '../../types/auth.types'
+import { User } from '../../types/user.types'
+
+function toAuthLogContext(user: User): { userId: string; authMethod: string } {
+  return {
+    userId: user._id || user.id || 'unknown',
+    authMethod: user.authMethod || 'unknown'
+  }
+}
 
 export async function login(req: Request, res: Response): Promise<void> {
   const { email, password }: LoginCredentials = req.body
   try {
     const user = await authService.login(email, password)
     const loginToken = authService.getLoginToken(user)
-    logger.info('User login: ', user)
+    logger.info('User login successful', toAuthLogContext(user))
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
   } catch (err) {
@@ -21,9 +29,9 @@ export async function signup(req: Request, res: Response): Promise<void> {
   try {
     const credentials: SignupCredentials = req.body
     const account = await authService.signup(credentials)
-    logger.debug(`auth.route - new account created: ` + JSON.stringify(account))
+    logger.debug('auth.route - new account created', toAuthLogContext(account))
     const user = await authService.login(credentials.email, credentials.password)
-    logger.info('User signup:', user)
+    logger.info('User signup successful', toAuthLogContext(user))
     const loginToken = authService.getLoginToken(user)
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
@@ -45,7 +53,7 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
   try {
     const user = await authService.loginWithGoogle(idToken)
     const loginToken = authService.getLoginToken(user)
-    logger.info('Google login successful: ', user.email)
+    logger.info('Google login successful', toAuthLogContext(user))
     res.cookie('loginToken', loginToken, { sameSite: 'none', secure: true })
     res.json({ success: true, token: loginToken, user })
   } catch (err) {
