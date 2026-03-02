@@ -47,3 +47,14 @@ export interface ActivityFeedItem {
   readAt?: Date | null
   dedupeKey?: string
 }
+
+export interface GetActivityFeedPageOptions {
+  cursor?: string | null
+  limit?: number
+}
+
+export interface ActivityFeedPage {
+  items: ActivityFeedItem[]
+  nextCursor: string | null
+  hasMore: boolean
+}
