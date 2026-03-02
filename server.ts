@@ -17,9 +17,32 @@ import { logger } from './services/logger.service.js'
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 initFcm()
-void activityFeedService.ensureCollectionAndIndexes().catch((err) => {
-  logger.error('Activity feed bootstrap failed', err)
-})
+const ACTIVITY_FEED_BOOTSTRAP_INITIAL_RETRY_MS = 3000
+const ACTIVITY_FEED_BOOTSTRAP_MAX_RETRY_MS = 60000
+
+void bootstrapActivityFeedIndexesWithRetry()
+
+async function bootstrapActivityFeedIndexesWithRetry(
+  attempt: number = 1
+): Promise<void> {
+  try {
+    await activityFeedService.ensureCollectionAndIndexes()
+  } catch (err) {
+    const retryDelayMs = Math.min(
+      ACTIVITY_FEED_BOOTSTRAP_INITIAL_RETRY_MS * Math.pow(2, attempt - 1),
+      ACTIVITY_FEED_BOOTSTRAP_MAX_RETRY_MS
+    )
+
+    logger.error('Activity feed bootstrap failed; retry scheduled', {
+      attempt,
+      retryDelayMs
+    }, err)
+
+    setTimeout(() => {
+      void bootstrapActivityFeedIndexesWithRetry(attempt + 1)
+    }, retryDelayMs)
+  }
+}
 
 const app: Express = express()
 const server = http.createServer(app)
