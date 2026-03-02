@@ -6,7 +6,8 @@ import { FriendRequest, FriendRequestToAdd, FriendRequestToUpdate } from '../../
 import { userService } from '../user/user.service.js'
 import { sendFcmToUser } from '../../services/fcm.service.js'
 import { activityFeedService } from '../activity-feed/activity-feed.service.js'
-import { ActivityFeedCreateInput, ActivityFeedEventType } from '../../types/activity-feed.types.js'
+import { ActivityFeedCreateInput, ActivityFeedEventType, ActivityFeedTargetType } from '../../types/activity-feed.types.js'
+import { buildActivityFcmData } from '../../services/activity-fcm-payload.service.js'
 
 export const friendRequestService = {
   add,
@@ -24,6 +25,7 @@ export const friendRequestService = {
 const FRIEND_REQUEST_RECEIVED_EVENT_TYPE: ActivityFeedEventType = 'friend_request_received'
 const FRIEND_REQUEST_ACCEPTED_EVENT_TYPE: ActivityFeedEventType = 'friend_request_accepted'
 const FRIEND_REQUEST_DECLINED_EVENT_TYPE: ActivityFeedEventType = 'friend_request_declined'
+const FRIEND_REQUEST_TARGET_TYPE: ActivityFeedTargetType = 'friend_request'
 
 // Helper function to transform friend request from DB to API format
 function transformFriendRequest(request: any): FriendRequest {
@@ -81,14 +83,15 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
     const requestId = createdRequest._id || createdRequest.id || ''
     const senderName = getDisplayName(fromUser)
     const senderActor = toActivityActorSnapshot(fromUser)
+    let feedItemId: string | undefined
 
     // Write activity row for recipient (don't fail if feed write fails)
     try {
-      await activityFeedService.createForUser(request.toUserId, {
+      const feedItem = await activityFeedService.createForUser(request.toUserId, {
         type: FRIEND_REQUEST_RECEIVED_EVENT_TYPE,
         actor: senderActor,
         targetId: requestId,
-        targetType: 'friend_request',
+        targetType: FRIEND_REQUEST_TARGET_TYPE,
         title: `${senderName} sent you a friend request`,
         metadata: {
           requestId,
@@ -97,6 +100,7 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
         },
         dedupeKey: `${FRIEND_REQUEST_RECEIVED_EVENT_TYPE}:${requestId}`
       })
+      feedItemId = normalizeOptionalString(feedItem?.id || feedItem?._id)
     } catch (err) {
       logger.error('Failed to write activity feed item for friend request', err)
     }
@@ -107,11 +111,16 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
         userId: request.toUserId,
         title: 'New friend request',
         body: `${senderName} sent you a friend request`,
-        data: {
+        data: buildActivityFcmData({
           type: FRIEND_REQUEST_RECEIVED_EVENT_TYPE,
-          fromUserId: request.fromUserId,
-          requestId
-        }
+          targetType: FRIEND_REQUEST_TARGET_TYPE,
+          targetId: requestId,
+          feedItemId,
+          extraData: {
+            fromUserId: request.fromUserId,
+            requestId
+          }
+        })
       })
       logger.info('FCM notification sent to user', request.toUserId)
     } catch (err) {
@@ -165,12 +174,13 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
         const toUser = await userService.getById(existingRequest.toUserId)
         const accepterName = getDisplayName(toUser)
         const accepterActor = toActivityActorSnapshot(toUser)
+        let feedItemId: string | undefined
 
-        await activityFeedService.createForUser(existingRequest.fromUserId, {
+        const feedItem = await activityFeedService.createForUser(existingRequest.fromUserId, {
           type: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
           actor: accepterActor,
           targetId: request._id,
-          targetType: 'friend_request',
+          targetType: FRIEND_REQUEST_TARGET_TYPE,
           title: `${accepterName} accepted your friend request`,
           metadata: {
             requestId: request._id,
@@ -179,16 +189,22 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           },
           dedupeKey: `${FRIEND_REQUEST_ACCEPTED_EVENT_TYPE}:${request._id}`
         })
+        feedItemId = normalizeOptionalString(feedItem?.id || feedItem?._id)
 
         await sendFcmToUser({
           userId: existingRequest.fromUserId,
           title: 'Friend Request Accepted',
           body: `${accepterName} accepted your friend request`,
-          data: {
+          data: buildActivityFcmData({
             type: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
-            requestId: request._id,
-            friendId: existingRequest.toUserId
-          }
+            targetType: FRIEND_REQUEST_TARGET_TYPE,
+            targetId: request._id,
+            feedItemId,
+            extraData: {
+              requestId: request._id,
+              friendId: existingRequest.toUserId
+            }
+          })
         })
       } catch (err) {
         logger.error('Failed to process accepted friend request notifications', err)
@@ -203,11 +219,15 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           userId: existingRequest.fromUserId,
           title: 'Friend Request Declined',
           body: `${declinerName} declined your friend request`,
-          data: {
+          data: buildActivityFcmData({
             type: FRIEND_REQUEST_DECLINED_EVENT_TYPE,
-            requestId: request._id,
-            friendId: existingRequest.toUserId
-          }
+            targetType: FRIEND_REQUEST_TARGET_TYPE,
+            targetId: request._id,
+            extraData: {
+              requestId: request._id,
+              friendId: existingRequest.toUserId
+            }
+          })
         })
       } catch (err) {
         logger.error('Failed to send FCM notification for declined friend request', err)
@@ -405,11 +425,17 @@ function toActivityActorSnapshot(user: {
 }
 
 function normalizeActorUsername(username?: string, fullName?: string): string {
-  const normalizedUsername = username?.trim()
+  const normalizedUsername = normalizeOptionalString(username)
   if (normalizedUsername) return normalizedUsername
 
-  const normalizedFullName = fullName?.trim()
+  const normalizedFullName = normalizeOptionalString(fullName)
   if (normalizedFullName) return normalizedFullName
 
   return 'unknown'
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
 }
