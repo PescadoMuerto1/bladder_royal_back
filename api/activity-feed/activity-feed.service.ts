@@ -3,6 +3,10 @@ import { dbService } from '../../services/db.service.js'
 import { logger } from '../../services/logger.service.js'
 import {
   ACTIVITY_FEED_COLLECTION,
+  ACTIVITY_FEED_EVENT_TYPES,
+  ACTIVITY_FEED_TARGET_TYPES,
+  ActivityFeedCreateInput,
+  ActivityFeedEventType,
   ActivityFeedItem,
   ActivityFeedPage,
   GetActivityFeedPageOptions
@@ -16,7 +20,9 @@ export const activityFeedService = {
   getCollection,
   ensureCollectionAndIndexes,
   getFeedPage,
-  getUnreadCount
+  getUnreadCount,
+  createForUser,
+  createForUsers
 }
 
 let didEnsureActivityFeedIndexes = false
@@ -120,6 +126,81 @@ async function getUnreadCount(recipientUserId: string): Promise<number> {
     })
   } catch (err) {
     logger.error('Failed to get activity feed unread count', err)
+    throw err
+  }
+}
+
+async function createForUser(
+  recipientUserId: string,
+  input: ActivityFeedCreateInput
+): Promise<ActivityFeedItem | null> {
+  try {
+    const normalizedRecipientUserId = normalizeRecipientUserId(recipientUserId)
+    if (!isKnownEventType(input.type)) {
+      throw new Error(`Unknown activity event type: ${input.type}`)
+    }
+    if (typeof input.targetType !== 'undefined' && !isKnownTargetType(input.targetType)) {
+      throw new Error(`Unknown activity target type: ${input.targetType}`)
+    }
+
+    const itemToInsert = buildActivityFeedItemForInsert(
+      normalizedRecipientUserId,
+      input
+    )
+    const collection = await getCollection()
+
+    try {
+      const result = await collection.insertOne(itemToInsert as any)
+      return toActivityFeedItem({
+        ...itemToInsert,
+        _id: result.insertedId
+      })
+    } catch (err: any) {
+      if (isDuplicateKeyError(err) && itemToInsert.dedupeKey) {
+        logger.info('Activity feed dedupe hit', {
+          recipientUserId: normalizedRecipientUserId,
+          dedupeKey: itemToInsert.dedupeKey,
+          type: itemToInsert.type
+        })
+
+        const existing = await collection.findOne({
+          recipientUserId: normalizedRecipientUserId,
+          dedupeKey: itemToInsert.dedupeKey
+        })
+        return existing ? toActivityFeedItem(existing) : null
+      }
+      throw err
+    }
+  } catch (err) {
+    logger.error('Failed to create activity feed item', err)
+    throw err
+  }
+}
+
+async function createForUsers(
+  recipientUserIds: string[],
+  input: ActivityFeedCreateInput
+): Promise<ActivityFeedItem[]> {
+  try {
+    const uniqueRecipientIds = Array.from(
+      new Set(
+        recipientUserIds
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0)
+      )
+    )
+
+    if (uniqueRecipientIds.length === 0) return []
+
+    const items = await Promise.all(
+      uniqueRecipientIds.map((recipientUserId) =>
+        createForUser(recipientUserId, input)
+      )
+    )
+
+    return items.filter((item): item is ActivityFeedItem => item !== null)
+  } catch (err) {
+    logger.error('Failed to create activity feed items for users', err)
     throw err
   }
 }
@@ -238,4 +319,116 @@ function toObjectIdString(idValue: unknown): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isKnownEventType(type: string): boolean {
+  return (ACTIVITY_FEED_EVENT_TYPES as readonly string[]).includes(type)
+}
+
+function isKnownTargetType(type: string): boolean {
+  return (ACTIVITY_FEED_TARGET_TYPES as readonly string[]).includes(type)
+}
+
+function isDuplicateKeyError(err: any): boolean {
+  return err?.code === 11000 || String(err?.message || '').includes('E11000')
+}
+
+function buildActivityFeedItemForInsert(
+  recipientUserId: string,
+  input: ActivityFeedCreateInput
+): Omit<ActivityFeedItem, '_id' | 'id'> {
+  const actor = normalizeActorSnapshot(input.actor)
+  const renderedText = renderTitleAndBody({
+    type: input.type,
+    actor,
+    title: input.title,
+    body: input.body
+  })
+  const dedupeKey = normalizeOptionalString(input.dedupeKey)
+  const targetId = normalizeOptionalString(input.targetId)
+
+  return {
+    recipientUserId,
+    type: input.type,
+    createdAt:
+      input.createdAt instanceof Date && !Number.isNaN(input.createdAt.getTime())
+        ? input.createdAt
+        : new Date(),
+    actor,
+    targetId: targetId || null,
+    targetType: input.targetType,
+    title: renderedText.title,
+    body: renderedText.body,
+    metadata: isPlainObject(input.metadata) ? input.metadata : {},
+    isRead: typeof input.isRead === 'boolean' ? input.isRead : false,
+    readAt: normalizeOptionalDate(input.readAt),
+    dedupeKey
+  }
+}
+
+function normalizeActorSnapshot(actor: ActivityFeedCreateInput['actor']) {
+  if (!actor) return null
+
+  const actorId = normalizeOptionalString(actor.id || actor._id)
+  const username = normalizeOptionalString(actor.username)
+
+  if (!actorId || !username) {
+    throw new Error('actor must include id/_id and username when provided')
+  }
+
+  return {
+    _id: actorId,
+    id: actorId,
+    username,
+    fullName: normalizeOptionalString(actor.fullName) || null,
+    imgUrl: normalizeOptionalString(actor.imgUrl) || null,
+    userColor: normalizeOptionalString(actor.userColor) || null,
+    markerCount:
+      typeof actor.markerCount === 'number' && Number.isFinite(actor.markerCount)
+        ? actor.markerCount
+        : null
+  }
+}
+
+function renderTitleAndBody(input: {
+  type: ActivityFeedEventType
+  actor: ActivityFeedItem['actor']
+  title?: string
+  body?: string | null
+}): { title: string, body: string | null } {
+  const explicitTitle = normalizeOptionalString(input.title)
+  const explicitBody = normalizeOptionalString(input.body)
+
+  if (explicitTitle) {
+    return { title: explicitTitle, body: explicitBody || null }
+  }
+
+  const actorName = input.actor?.fullName || input.actor?.username || 'Someone'
+
+  switch (input.type) {
+    case 'friend_request_received':
+      return { title: `${actorName} sent you a friend request`, body: null }
+    case 'friend_request_accepted':
+      return { title: `${actorName} accepted your friend request`, body: null }
+    case 'friend_request_declined':
+      return { title: `${actorName} declined your friend request`, body: null }
+    case 'friend_removed':
+      return { title: `${actorName} removed you from friends`, body: null }
+    case 'new_conquest':
+      return { title: `${actorName} conquered a new territory`, body: null }
+    case 'territory_taken':
+      return { title: `${actorName} took one of your territories`, body: null }
+    case 'activity_feed_update':
+      return { title: 'You have new activity', body: null }
+    case 'test':
+      return { title: 'Test activity event', body: null }
+    default:
+      return { title: 'You have new activity', body: null }
+  }
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
 }

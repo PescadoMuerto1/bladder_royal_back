@@ -58,3 +58,17 @@ export interface ActivityFeedPage {
   nextCursor: string | null
   hasMore: boolean
 }
+
+export interface ActivityFeedCreateInput {
+  type: ActivityFeedEventType
+  actor?: ActivityFeedActorSnapshot | null
+  targetId?: string | null
+  targetType?: ActivityFeedTargetType
+  title?: string
+  body?: string | null
+  metadata?: Record<string, unknown>
+  createdAt?: Date
+  isRead?: boolean
+  readAt?: Date | null
+  dedupeKey?: string
+}
