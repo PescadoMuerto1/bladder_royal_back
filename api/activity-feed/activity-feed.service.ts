@@ -83,6 +83,9 @@ async function getFeedPage(
   recipientUserId: string,
   options: GetActivityFeedPageOptions = {}
 ): Promise<ActivityFeedPage> {
+  const startedAt = Date.now()
+  const recipientUserIdForLog = normalizeOptionalString(recipientUserId) || 'unknown'
+
   try {
     const normalizedRecipientUserId = normalizeRecipientUserId(recipientUserId)
     const limit = normalizeLimit(options.limit)
@@ -108,27 +111,55 @@ async function getFeedPage(
     const items = pageDocs.map(toActivityFeedItem)
     const nextCursor = hasMore ? buildNextCursor(pageDocs) : null
 
+    logger.info('Activity feed page fetched', {
+      recipientUserId: normalizedRecipientUserId,
+      limit,
+      hasCursor: Boolean(options.cursor),
+      returnedCount: items.length,
+      hasMore,
+      durationMs: Date.now() - startedAt
+    })
+
     return {
       items,
       hasMore,
       nextCursor
     }
   } catch (err) {
-    logger.error('Failed to get activity feed page', err)
+    logger.error('Failed to get activity feed page', {
+      recipientUserId: recipientUserIdForLog,
+      limit: options.limit,
+      hasCursor: Boolean(options.cursor),
+      durationMs: Date.now() - startedAt
+    }, err)
     throw err
   }
 }
 
 async function getUnreadCount(recipientUserId: string): Promise<number> {
+  const startedAt = Date.now()
+  const recipientUserIdForLog = normalizeOptionalString(recipientUserId) || 'unknown'
+
   try {
     const normalizedRecipientUserId = normalizeRecipientUserId(recipientUserId)
     const collection = await getCollection()
-    return collection.countDocuments({
+    const unreadCount = await collection.countDocuments({
       recipientUserId: normalizedRecipientUserId,
       isRead: false
     })
+
+    logger.info('Activity feed unread count fetched', {
+      recipientUserId: normalizedRecipientUserId,
+      unreadCount,
+      durationMs: Date.now() - startedAt
+    })
+
+    return unreadCount
   } catch (err) {
-    logger.error('Failed to get activity feed unread count', err)
+    logger.error('Failed to get activity feed unread count', {
+      recipientUserId: recipientUserIdForLog,
+      durationMs: Date.now() - startedAt
+    }, err)
     throw err
   }
 }
@@ -137,6 +168,10 @@ async function markAsRead(
   recipientUserId: string,
   itemId: string
 ): Promise<void> {
+  const startedAt = Date.now()
+  const recipientUserIdForLog = normalizeOptionalString(recipientUserId) || 'unknown'
+  const itemIdForLog = normalizeOptionalString(itemId) || 'unknown'
+
   try {
     const normalizedRecipientUserId = normalizeRecipientUserId(recipientUserId)
     const normalizedItemId = normalizeFeedItemId(itemId)
@@ -157,22 +192,43 @@ async function markAsRead(
       }
     )
 
-    if (result.matchedCount > 0) return
+    if (result.matchedCount > 0) {
+      logger.info('Activity feed item marked as read', {
+        recipientUserId: normalizedRecipientUserId,
+        itemId: normalizedItemId,
+        durationMs: Date.now() - startedAt
+      })
+      return
+    }
 
     const existing = await collection.findOne({
       _id: objectId,
       recipientUserId: normalizedRecipientUserId
     })
-    if (existing) return
+    if (existing) {
+      logger.info('Activity feed item already marked as read', {
+        recipientUserId: normalizedRecipientUserId,
+        itemId: normalizedItemId,
+        durationMs: Date.now() - startedAt
+      })
+      return
+    }
 
     throw new Error('Activity feed item not found')
   } catch (err) {
-    logger.error('Failed to mark activity feed item as read', err)
+    logger.error('Failed to mark activity feed item as read', {
+      recipientUserId: recipientUserIdForLog,
+      itemId: itemIdForLog,
+      durationMs: Date.now() - startedAt
+    }, err)
     throw err
   }
 }
 
 async function markAllAsRead(recipientUserId: string): Promise<number> {
+  const startedAt = Date.now()
+  const recipientUserIdForLog = normalizeOptionalString(recipientUserId) || 'unknown'
+
   try {
     const normalizedRecipientUserId = normalizeRecipientUserId(recipientUserId)
     const collection = await getCollection()
@@ -190,9 +246,19 @@ async function markAllAsRead(recipientUserId: string): Promise<number> {
       }
     )
 
-    return result.modifiedCount || 0
+    const updatedCount = result.modifiedCount || 0
+    logger.info('All activity feed items marked as read', {
+      recipientUserId: normalizedRecipientUserId,
+      updatedCount,
+      durationMs: Date.now() - startedAt
+    })
+
+    return updatedCount
   } catch (err) {
-    logger.error('Failed to mark all activity feed items as read', err)
+    logger.error('Failed to mark all activity feed items as read', {
+      recipientUserId: recipientUserIdForLog,
+      durationMs: Date.now() - startedAt
+    }, err)
     throw err
   }
 }

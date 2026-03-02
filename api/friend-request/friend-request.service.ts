@@ -103,7 +103,12 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
       })
       feedItemId = normalizeOptionalString(feedItem?.id || feedItem?._id)
     } catch (err) {
-      logger.error('Failed to write activity feed item for friend request', err)
+      logger.error('Failed to write activity feed item for friend request', {
+        eventType: FRIEND_REQUEST_RECEIVED_EVENT_TYPE,
+        recipientUserId: request.toUserId,
+        requestId,
+        fromUserId: request.fromUserId
+      }, err)
     }
 
     // Send FCM notification to recipient (don't fail if FCM fails)
@@ -125,7 +130,12 @@ async function add(request: FriendRequestToAdd): Promise<FriendRequest> {
       })
       logger.info('FCM notification sent to user', request.toUserId)
     } catch (err) {
-      logger.error('Failed to send FCM notification for friend request', err)
+      logger.error('Failed to send FCM notification for friend request', {
+        eventType: FRIEND_REQUEST_RECEIVED_EVENT_TYPE,
+        recipientUserId: request.toUserId,
+        requestId,
+        fromUserId: request.fromUserId
+      }, err)
       // Don't throw - FCM failure shouldn't break the request creation
     }
 
@@ -208,7 +218,12 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           })
         })
       } catch (err) {
-        logger.error('Failed to process accepted friend request notifications', err)
+        logger.error('Failed to process accepted friend request notifications', {
+          eventType: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
+          recipientUserId: existingRequest.fromUserId,
+          requestId: request._id,
+          friendId: existingRequest.toUserId
+        }, err)
       }
     }
 
@@ -231,7 +246,12 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           })
         })
       } catch (err) {
-        logger.error('Failed to send FCM notification for declined friend request', err)
+        logger.error('Failed to send FCM notification for declined friend request', {
+          eventType: FRIEND_REQUEST_DECLINED_EVENT_TYPE,
+          recipientUserId: existingRequest.fromUserId,
+          requestId: request._id,
+          friendId: existingRequest.toUserId
+        }, err)
       }
     }
 
