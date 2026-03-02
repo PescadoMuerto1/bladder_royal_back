@@ -181,12 +181,12 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
       await addToFriendsList(existingRequest.fromUserId, existingRequest.toUserId)
 
       // After successfully accepting the request, write feed row and notify sender
-      try {
-        const toUser = await userService.getById(existingRequest.toUserId)
-        const accepterName = getDisplayName(toUser)
-        const accepterActor = toActivityActorSnapshot(toUser)
-        let feedItemId: string | undefined
+      const toUser = await userService.getById(existingRequest.toUserId)
+      const accepterName = getDisplayName(toUser)
+      const accepterActor = toActivityActorSnapshot(toUser)
+      let feedItemId: string | undefined
 
+      try {
         const feedItem = await activityFeedService.createForUser(existingRequest.fromUserId, {
           type: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
           actor: accepterActor,
@@ -201,7 +201,16 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           dedupeKey: `${FRIEND_REQUEST_ACCEPTED_EVENT_TYPE}:${request._id}`
         })
         feedItemId = normalizeOptionalString(feedItem?.id || feedItem?._id)
+      } catch (err) {
+        logger.error('Failed to write activity feed item for accepted friend request', {
+          eventType: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
+          recipientUserId: existingRequest.fromUserId,
+          requestId: request._id,
+          friendId: existingRequest.toUserId
+        }, err)
+      }
 
+      try {
         await sendFcmToUser({
           userId: existingRequest.fromUserId,
           title: 'Friend Request Accepted',
@@ -218,7 +227,7 @@ async function update(request: FriendRequestToUpdate): Promise<FriendRequest> {
           })
         })
       } catch (err) {
-        logger.error('Failed to process accepted friend request notifications', {
+        logger.error('Failed to send FCM notification for accepted friend request', {
           eventType: FRIEND_REQUEST_ACCEPTED_EVENT_TYPE,
           recipientUserId: existingRequest.fromUserId,
           requestId: request._id,
