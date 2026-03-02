@@ -9,12 +9,16 @@ import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { areaMarkerRoutes } from './api/area marker/area-marker.routes.js'
 import { friendRequestRoutes } from './api/friend-request/friend-request.routes.js'
+import { activityFeedService } from './api/activity-feed/activity-feed.service.js'
 import { setupSocketAPI } from './services/socket.service.js'
 import { initFcm } from './services/fcm.service.js'
 import { logger } from './services/logger.service.js'
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 initFcm()
+void activityFeedService.ensureCollectionAndIndexes().catch((err) => {
+  logger.error('Activity feed bootstrap failed', err)
+})
 
 const app: Express = express()
 const server = http.createServer(app)
