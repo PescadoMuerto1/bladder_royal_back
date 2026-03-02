@@ -9,6 +9,7 @@ import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { areaMarkerRoutes } from './api/area marker/area-marker.routes.js'
 import { friendRequestRoutes } from './api/friend-request/friend-request.routes.js'
+import { activityFeedRoutes } from './api/activity-feed/activity-feed.routes.js'
 import { activityFeedService } from './api/activity-feed/activity-feed.service.js'
 import { setupSocketAPI } from './services/socket.service.js'
 import { initFcm } from './services/fcm.service.js'
@@ -90,6 +91,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/friend-request', friendRequestRoutes)
 app.use('/api/area-marker', areaMarkerRoutes)
+app.use('/api/activity-feed', activityFeedRoutes)
 setupSocketAPI(server)
 
 app.get('/**', (_req, res) => {
