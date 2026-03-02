@@ -9,12 +9,40 @@ import { authRoutes } from './api/auth/auth.routes.js'
 import { userRoutes } from './api/user/user.routes.js'
 import { areaMarkerRoutes } from './api/area marker/area-marker.routes.js'
 import { friendRequestRoutes } from './api/friend-request/friend-request.routes.js'
+import { activityFeedRoutes } from './api/activity-feed/activity-feed.routes.js'
+import { activityFeedService } from './api/activity-feed/activity-feed.service.js'
 import { setupSocketAPI } from './services/socket.service.js'
 import { initFcm } from './services/fcm.service.js'
 import { logger } from './services/logger.service.js'
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 
 initFcm()
+const ACTIVITY_FEED_BOOTSTRAP_INITIAL_RETRY_MS = 3000
+const ACTIVITY_FEED_BOOTSTRAP_MAX_RETRY_MS = 60000
+
+void bootstrapActivityFeedIndexesWithRetry()
+
+async function bootstrapActivityFeedIndexesWithRetry(
+  attempt: number = 1
+): Promise<void> {
+  try {
+    await activityFeedService.ensureCollectionAndIndexes()
+  } catch (err) {
+    const retryDelayMs = Math.min(
+      ACTIVITY_FEED_BOOTSTRAP_INITIAL_RETRY_MS * Math.pow(2, attempt - 1),
+      ACTIVITY_FEED_BOOTSTRAP_MAX_RETRY_MS
+    )
+
+    logger.error('Activity feed bootstrap failed; retry scheduled', {
+      attempt,
+      retryDelayMs
+    }, err)
+
+    setTimeout(() => {
+      void bootstrapActivityFeedIndexesWithRetry(attempt + 1)
+    }, retryDelayMs)
+  }
+}
 
 const app: Express = express()
 const server = http.createServer(app)
@@ -86,6 +114,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/friend-request', friendRequestRoutes)
 app.use('/api/area-marker', areaMarkerRoutes)
+app.use('/api/activity-feed', activityFeedRoutes)
 setupSocketAPI(server)
 
 app.get('/**', (_req, res) => {
