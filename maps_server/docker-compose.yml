@@ -1,0 +1,15 @@
+services:
+  map-server:
+    image: maptiler/tileserver-gl:latest
+    container_name: map_server
+    restart: unless-stopped
+    ports:
+      - "3030:8080"
+    volumes:
+      # Maps your current directory to the container's data folder
+      - ./:/data:z
+    # command: --file israel.mbtiles  # Uncomment this to load only ONE specific file
+    # command: -p 8080               # Use this to auto-scan all .mbtiles in the folder
+    environment:
+      - NODE_ENV=production
+

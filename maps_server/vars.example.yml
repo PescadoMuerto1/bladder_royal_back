@@ -1,0 +1,9 @@
+# Copy this file to `vars.yml` (e.g., `cp vars.example.yml vars.yml`) and adjust your values
+# Note: `vars.yml` is ignored by git to keep sensitive information safe.
+
+# Directory on the remote server where the app will be deployed
+app_dir: "/opt/maps_server"
+
+# Add more variables here if you need them:
+# custom_domain: "maps.example.com"
+# database_password: "my_super_secret_password"

@@ -7,3 +7,4 @@ dist/
 .vscode
 firebase-service-account.json
 **/firebase-service-account.json
+**/vars.yml
