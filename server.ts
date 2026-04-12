@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import fs from 'fs'
 import http from 'http'
 import path from 'path'
 import cors from 'cors'
@@ -46,6 +47,8 @@ async function bootstrapActivityFeedIndexesWithRetry(
 
 const app: Express = express()
 const server = http.createServer(app)
+const staticIndexPath = path.resolve('public/index.html')
+const hasStaticFrontend = fs.existsSync(staticIndexPath)
 
 // Express App Config
 app.use(cookieParser())
@@ -85,14 +88,18 @@ app.use((req, res, next) => {
 })
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.resolve('public')))
+  if (hasStaticFrontend) {
+    app.use(express.static(path.resolve('public')))
+    logger.info('Serving static files from ./public')
+  } else {
+    logger.warn('Production mode: public frontend not found; skipping static file serving')
+  }
   const corsOptions = {
     origin: '*',
     credentials: false
   }
   app.use(cors(corsOptions))
   logger.info('Production mode: CORS enabled for all origins (mobile APK)')
-  logger.info('Serving static files from ./public')
 } else {
   const corsOptions = {
     origin: [
@@ -117,9 +124,15 @@ app.use('/api/area-marker', areaMarkerRoutes)
 app.use('/api/activity-feed', activityFeedRoutes)
 setupSocketAPI(server)
 
-app.get('/**', (_req, res) => {
-  res.sendFile(path.resolve('public/index.html'))
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, service: 'bladder-royal-back' })
 })
+
+if (hasStaticFrontend) {
+  app.get('/**', (_req, res) => {
+    res.sendFile(staticIndexPath)
+  })
+}
 
 const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   logger.error(`Unhandled Express error at ${req.method} ${req.originalUrl}`, err)
