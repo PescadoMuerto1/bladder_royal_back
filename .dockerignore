@@ -11,4 +11,3 @@ nodemon.json
 .vscode
 .idea
 *.md
-config/firebase-service-account.json
